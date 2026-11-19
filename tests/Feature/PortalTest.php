@@ -11,7 +11,7 @@ class PortalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['portal.financial_operations_enabled' => true, 'portal.registration_enabled' => true]);
+        config(['portal.financial_operations_enabled' => true, 'portal.registration_enabled' => true, 'portal.deposit_qr_demo_mode' => false]);
     }
     private function member(): User
     {
@@ -22,10 +22,12 @@ class PortalTest extends TestCase
     private function approvedTransaction(string $type, string $amount, ?string $plan = null, ?string $requestId = null)
     {
         $requestId ??= (string) Str::uuid();
-        $response = $this->postJson('/portal/transactions', [
+        $payload = [
             'type' => $type, 'amount' => $amount, 'plan' => $plan,
             'request_id' => $requestId,
-        ]);
+        ];
+        if ($type === 'deposit') { $payload['payment_method'] = 'bpi'; }
+        $response = $this->postJson('/portal/transactions', $payload);
         // Ledger verification includes admin approval; separate tests verify pending states and permissions.
         if ($response->status() === 200 && in_array($type, ['deposit', 'withdraw'], true)) {
             $record = WalletRequest::where('user_id', auth()->id())->where('request_id', $requestId)->firstOrFail();
@@ -38,16 +40,39 @@ class PortalTest extends TestCase
     }
     public function test_english_portal_and_guest_state_are_available(): void
     {
-        $this->get('/')->assertOk()->assertSee('lang="en"', false)->assertSee('PORTAL_CONFIG');
+        $this->get('/')
+            ->assertOk()
+            ->assertSee('lang="en"', false)
+            ->assertSee('PORTAL_CONFIG')
+            ->assertSee('property="og:title"', false)
+            ->assertSee('property="og:image"', false)
+            ->assertSee('/assets/social-preview.jpg', false)
+            ->assertSee('name="twitter:card"', false);
         $this->getJson('/portal/state')->assertOk()->assertJsonPath('user', null)->assertJsonPath('wallet.balance', 0);
     }
     public function test_registration_creates_a_zero_balance_wallet_and_hashes_password(): void
     {
-        $this->postJson('/portal/register', ['name' => 'Jamie Lee', 'email' => 'JAMIE@example.test', 'password' => 'A-strong-password!9', 'password_confirmation' => 'A-strong-password!9'])
-            ->assertOk()->assertJsonPath('user.email', 'jamie@example.test')->assertJsonPath('wallet.balance', 0)->assertJsonPath('wallet.earnings', 0)->assertJsonStructure(['csrf']);
+        $this->postJson('/portal/register', ['name' => 'Jamie Lee', 'email' => 'JAMIE@example.test', 'phone' => '+639171234567', 'password' => 'A-strong-password!9', 'password_confirmation' => 'A-strong-password!9'])
+            ->assertOk()->assertJsonPath('user.email', 'jamie@example.test')->assertJsonPath('user.phone', '+639171234567')->assertJsonPath('wallet.balance', 0)->assertJsonPath('wallet.earnings', 0)->assertJsonStructure(['csrf']);
         $this->assertAuthenticated();
         $this->assertTrue(Hash::check('A-strong-password!9', User::first()->password));
         $this->assertDatabaseCount('wallets', 1);
+        $this->assertDatabaseHas('users', ['email' => 'jamie@example.test', 'phone' => '+639171234567']);
+    }
+
+    public function test_registration_requires_a_valid_phone_number(): void
+    {
+        foreach (['not-a-phone', '123---', '1234567890123456'] as $phone) {
+            $this->postJson('/portal/register', [
+                'name' => 'Jamie Lee',
+                'email' => 'jamie@example.test',
+                'phone' => $phone,
+                'password' => 'A-strong-password!9',
+                'password_confirmation' => 'A-strong-password!9',
+            ])->assertUnprocessable()->assertJsonValidationErrors('phone');
+        }
+
+        $this->assertDatabaseCount('users', 0);
     }
     public function test_login_validates_credentials_and_logout_ends_the_session(): void
     {

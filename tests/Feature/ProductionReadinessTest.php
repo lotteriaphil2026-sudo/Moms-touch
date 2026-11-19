@@ -16,7 +16,7 @@ class ProductionReadinessTest extends TestCase
     public function test_new_accounts_have_no_cash_hold_principal_earnings_or_sample_history(): void
     {
         config(['portal.registration_enabled' => true, 'portal.financial_operations_enabled' => false]);
-        $response=$this->postJson('/portal/register', ['name' => 'Member', 'email' => 'new@example.test', 'password' => 'A-strong-password!9', 'password_confirmation' => 'A-strong-password!9'])->assertOk();
+        $response=$this->postJson('/portal/register', ['name' => 'Member', 'email' => 'new@example.test', 'phone' => '+639171234567', 'password' => 'A-strong-password!9', 'password_confirmation' => 'A-strong-password!9'])->assertOk();
         foreach(['balance','held','invested','earnings','daily_earnings'] as $key)$response->assertJsonPath('wallet.'.$key,0);
         foreach(['transactions','investments','wallet_requests','franchise_applications'] as $key)$response->assertJsonCount(0,$key);
         $this->assertFalse(User::first()->is_admin);

@@ -1,5 +1,5 @@
 <?php
-use App\Models\User;
+use App\Models\{MemberSignIn, User};
 use App\Services\InterestAccrualService;
 use Illuminate\Support\Facades\{Artisan, Schedule};
 Artisan::command('portal:accrue-interest', function (InterestAccrualService $interest) {
@@ -12,6 +12,12 @@ Artisan::command('portal:accrue-interest', function (InterestAccrualService $int
     $this->info('Interest credited: '.number_format($total / 100, 2).' PHP.');
 })->purpose('Credit completed 24-hour periods for enabled investment plans');
 Schedule::command('portal:accrue-interest')->everyMinute()->withoutOverlapping();
+
+Artisan::command('portal:prune-sign-ins', function () {
+    $deleted = MemberSignIn::where('created_at', '<', now()->subDays(30))->delete();
+    $this->info("Deleted {$deleted} expired member sign-in records.");
+})->purpose('Delete member sign-in metadata older than 30 days');
+Schedule::command('portal:prune-sign-ins')->daily()->withoutOverlapping();
 
 Artisan::command('portal:create-admin {email?} {--name=}', function () {
     $email = strtolower(trim($this->argument('email') ?: $this->ask('Admin email address')));

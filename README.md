@@ -8,7 +8,7 @@ New accounts and newly created administrators start with **₱0.00** available, 
 
 The Sites-hosted publication serves the sign-in design and this source download. **It cannot execute PHP.** Until the Laravel app is deployed to a PHP host, its static sign-in/registration forms are disabled, protected URLs return to sign-in, and no browser-saved sample account is accepted. The former sample credentials are retired.
 
-Registration and internal wallet operations are closed by default. The application is prepared for deployment; it is not a connected bank, payment gateway, or automatic payout system. Host configuration, an actual database, email delivery, and the operator’s final policies remain required before opening accounts.
+Registration and internal wallet operations are closed by default. Registration requires a phone number. The application is prepared for deployment; it is not a connected bank, payment gateway, or automatic payout system. Host configuration, an actual database, email delivery, and the operator’s final policies remain required before opening accounts.
 
 ## First deployment on a PHP host
 
@@ -59,11 +59,11 @@ Use PHP 8.4+, Composer 2, and Laravel’s PHP extensions, including PDO MySQL or
 
 ## Wallet operations and approval rules
 
-`PORTAL_FINANCIAL_OPERATIONS_ENABLED=false` blocks member financial requests, admin reviews, direct credits, plan grants, and interest accrual. It remains off in the deployment template. Only enable it after the operator has established deposit evidence, payout instructions, reconciliation, and the plan/principal rules. Rebuild the configuration cache after changing a flag.
+`PORTAL_FINANCIAL_OPERATIONS_ENABLED=false` blocks member financial requests, admin reviews, direct credits, plan grants, and interest accrual. It remains off in the deployment template. Only enable it after the operator has established deposit evidence, payout instructions, reconciliation, and the plan/principal rules. `PORTAL_DEPOSIT_QR_DEMO_MODE=true` displays non-payable test QRs and prevents approval of those requests. Keep it true for testing; setting it false alone does not configure real payment QR codes. Rebuild the configuration cache after changing a flag.
 
 When enabled:
 
-- Deposits remain pending and cannot increase a balance until an administrator approves them. The application has no verified payment webhook or uploaded payment evidence. An admin must verify receipt through the operator’s actual payment records before approval.
+- Deposits remain pending and cannot increase a balance until an administrator approves them. The default bank QR flow is explicitly test-only: its QR images encode test text, are not payment instructions, and its requests cannot be approved. Do not collect money using these demo QRs. To accept deposits, replace them with official merchant QR codes, configure the production flow, and verify receipt through the operator’s actual payment records; there is no payment webhook.
 - Withdrawals move available funds into a reserved balance immediately. Approval consumes the hold once; rejection releases it once. Admin approval updates the ledger; it does **not** send a bank/e-wallet payment. The operator must separately complete and reconcile the payout.
 - Admin credits add available funds. An assigned plan adds principal without charging the member’s available balance. Every action records its actor, member, amount, reason, and timestamp in the audit table.
 - All amounts use integer centavos, database transactions, consistent wallet-first locks, UUID request references, and payload fingerprints. Altered retries are rejected. Amounts are limited to ₱100–₱1,000,000 per operation; plans must meet the minimum.
@@ -93,6 +93,10 @@ Laravel web sessions and CSRF protect mutations. Passwords are hashed; login rot
 
 Password resets use Laravel’s password broker and the configured SMTP provider. Public reset responses are identical for known and unknown emails, including when mail delivery fails. Verify real delivery and the reset URL on the host. No live email was sent during automated verification.
 
+Every account has a unique referral code and a referrer. Existing accounts and new signups without a referral link are assigned to the Mom’s Touch platform root; valid shared links attribute new accounts to the referring member. Referral tracking currently has no bonuses or payouts. The portal’s public page includes Open Graph and Twitter metadata plus a 1200×630 share image for Messenger previews; social networks may cache previews, so refresh the URL in their sharing debugger after deployment if needed.
+
+Successful member sign-ins (including the initial session after registration) record the request IP address, user-agent string, and approximate country, region, and city when supplied by the hosting edge. The app reads optional `CF-*`, `CloudFront-Viewer-*`, or `X-Appengine-*` geolocation headers and does not send IP addresses to a third-party lookup service; unavailable location fields remain blank. Configure the trusted proxy/edge to overwrite these headers, and never use this approximate location as an authorization signal. Failed sign-ins and administrator sign-ins are not recorded. Authorized administrators can see the 20 most recent records on a member profile. Records older than 30 days are removed by the scheduled `portal:prune-sign-ins` command, so configure Laravel Cloud to run `php artisan schedule:run` every minute. Update the live privacy notice before collecting this metadata. Member phone numbers are collected at registration and visible only in that member’s session and administrator views.
+
 ## Franchise applications and content
 
 Authenticated members can submit contact/location details, an optional budget and timeline, and contact consent. The server owns references, member ownership, and application status. Members can see their own history; administrators can view submitted details. An application is an expression of interest, not a franchise award. No franchise notification or staff status-editing workflow is connected.
@@ -106,6 +110,6 @@ composer install
 php artisan test --compact
 ```
 
-55 PHP feature tests passed with 374 assertions using isolated, in-memory SQLite: zero registration wallets, authentication/CSRF, permissions and isolation, approval/hold arithmetic, idempotency, interest bounds, franchise validation, private admin creation, empty seeding, session response headers, reset failure handling, and read-only deployment checks. Six JavaScript checks cover exact plan quotes, clean zero state, retired browser demo storage, login guards, disabled static forms, and refused static API actions. Test the configured MySQL/PostgreSQL host before enabling wallet operations; no live database, SMTP, or payout provider has been configured here.
+PHP feature tests use isolated, in-memory SQLite and cover authentication/CSRF, permissions and isolation, sign-in metadata retention, approval/hold arithmetic, idempotency, interest bounds, franchise validation, private admin creation, empty seeding, session response headers, reset failure handling, and read-only deployment checks. Six JavaScript checks cover exact plan quotes, clean zero state, retired browser demo storage, login guards, disabled static forms, and refused static API actions. Test the configured MySQL/PostgreSQL host before enabling wallet operations; no live database, SMTP, or payout provider has been configured here.
 
 The ZIP excludes `.env`, encryption keys, installed dependencies, databases, sessions, logs, runtime caches, and test-result caches. `composer.lock` is included for reproducible dependency installation. Existing account data is not part of the source package.

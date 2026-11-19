@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{AdminAction, User, Wallet, WalletRequest};
+use App\Models\{AdminAction, MemberSignIn, User, Wallet, WalletRequest};
 use App\Services\{WalletAdministrationService, WalletRequestService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Validation\Rule;
@@ -21,21 +21,27 @@ class AdminController extends Controller
     public function users(Request $request): JsonResponse
     {
         $input = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $query = User::query()->select(['id', 'name', 'email', 'is_admin', 'created_at']);
+        $query = User::query()->select(['id', 'name', 'email', 'phone', 'is_admin', 'created_at']);
         if ($term = trim($input['search'] ?? '')) {
             $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%'));
         }
         $page = $query->latest('id')->paginate(25);
         $wallets = Wallet::whereIn('user_id', $page->getCollection()->pluck('id'))->get()->keyBy('user_id');
         return response()->json(['items' => $page->getCollection()->map(fn ($u) => [
-            'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'is_admin' => $u->is_admin,
+            'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'is_admin' => $u->is_admin,
             'created_at' => $u->created_at->toIso8601String(), 'balance' => $wallets->get($u->id)?->balance_cents ?? 0,
             'invested' => $wallets->get($u->id)?->invested_cents ?? 0, 'held' => $wallets->get($u->id)?->held_cents ?? 0,
         ]), 'page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()]);
     }
     public function user(User $user, PortalController $portal): JsonResponse
     {
-        return response()->json($portal->payloadForUser($user));
+        return response()->json([
+            ...$portal->payloadForUser($user),
+            'sign_in_history' => MemberSignIn::where('user_id', $user->id)
+                ->latest('created_at')
+                ->limit(20)
+                ->get(['ip_address', 'user_agent', 'country', 'region', 'city', 'created_at']),
+        ]);
     }
     public function requests(Request $request): JsonResponse
     {

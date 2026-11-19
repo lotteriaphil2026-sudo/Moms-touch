@@ -7,15 +7,18 @@ use Illuminate\Validation\ValidationException;
 
 class WalletRequestService
 {
-    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null): WalletRequest
+    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null, ?string $paymentMethod = null): WalletRequest
     {
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
         abort_unless(in_array($type, ['deposit', 'withdraw'], true), 422, 'Invalid request type.');
+        if ($paymentMethod !== null && !in_array($paymentMethod, ['landbank', 'bpi', 'security_bank'], true)) {
+            throw ValidationException::withMessages(['payment_method' => 'Choose a supported bank.']);
+        }
         $cents = PortalMoney::cents($amount);
         $note = trim($note ?? '');
-        $fingerprint = hash('sha256', $type.'|'.$cents.'|'.$note);
+        $fingerprint = hash('sha256', $type.'|'.$cents.'|'.$note.($paymentMethod === null ? '' : '|'.$paymentMethod));
         app(InterestAccrualService::class)->accrue($user);
-        return DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint) {
+        return DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod) {
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $existing = WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->first();
             if ($existing) {
@@ -37,7 +40,9 @@ class WalletRequestService
             }
             return WalletRequest::create(['reference' => (string) Str::uuid(), 'user_id' => $user->id,
                 'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'type' => $type,
-                'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending']);
+                'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending',
+                'payment_method' => $paymentMethod,
+                'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]);
         }, 3);
     }
 
@@ -51,6 +56,9 @@ class WalletRequestService
             $wallet = Wallet::where('user_id', $request->user_id)->lockForUpdate()->firstOrFail();
             $request = WalletRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
             $status = $decision === 'approve' ? 'approved' : 'rejected';
+            if ($request->test_only && $decision === 'approve') {
+                throw ValidationException::withMessages(['decision' => 'Demo deposit requests cannot be approved.']);
+            }
             if ($request->status === $status) { return $request; }
             if ($request->status !== 'pending') {
                 throw ValidationException::withMessages(['decision' => 'This request has already been reviewed.']);

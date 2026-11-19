@@ -9,7 +9,7 @@ use Tests\TestCase;
 class AdminWorkflowTest extends TestCase
 {
  use RefreshDatabase;
- protected function setUp(): void { parent::setUp();config(['portal.financial_operations_enabled'=>true,'portal.registration_enabled'=>true]); }
+ protected function setUp(): void { parent::setUp();config(['portal.financial_operations_enabled'=>true,'portal.registration_enabled'=>true,'portal.deposit_qr_demo_mode'=>false]); }
  private function member(bool $admin=false,string $funds='0'): User {
   $u=User::factory()->create();$u->forceFill(['is_admin'=>$admin])->save();Wallet::create(['user_id'=>$u->id]);
   if($funds!=='0')app(WalletService::class)->transact($u,'deposit',$funds,null,(string)Str::uuid());return $u;
@@ -25,7 +25,7 @@ class AdminWorkflowTest extends TestCase
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
  }
  public function test_registration_and_profile_updates_cannot_elevate_roles(): void {
-  $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);
+  $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','phone'=>'+639171234567','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);
   $this->patchJson('/portal/profile',['name'=>'Still a member','is_admin'=>true])->assertOk()->assertJsonPath('user.is_admin',false);$this->getJson('/portal/admin/users')->assertForbidden();
  }
  public function test_admin_sign_in_returns_the_server_assigned_role(): void {
@@ -36,12 +36,12 @@ class AdminWorkflowTest extends TestCase
  public function test_members_see_only_their_own_wallet_requests_and_cannot_choose_another_owner(): void {
   $first=$this->member();$second=$this->member();$this->walletRequest($first,'deposit','1000');$this->actingAs($second);
   $this->getJson('/portal/state')->assertOk()->assertJsonCount(0,'wallet_requests');
-  $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'500','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
+  $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'500','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
   $this->assertSame(1,WalletRequest::where('user_id',$first->id)->count());$this->assertSame(1,WalletRequest::where('user_id',$second->id)->count());
  }
  public function test_deposit_is_pending_until_approval_and_replays_do_not_duplicate_credit(): void {
   $u=$this->member();$admin=$this->member(true);$id=(string)Str::uuid();$this->actingAs($u);
-  $payload=['type'=>'deposit','amount'=>'1000.25','request_id'=>$id];
+  $payload=['type'=>'deposit','amount'=>'1000.25','payment_method'=>'bpi','request_id'=>$id];
   $this->postJson('/portal/transactions',[...$payload,'status'=>'approved','reviewed_by'=>$admin->id])->assertOk()->assertJsonPath('wallet.balance',0)->assertJsonPath('wallet_requests.0.status','pending');
   $this->postJson('/portal/transactions',$payload)->assertOk();$this->postJson('/portal/transactions',[...$payload,'amount'=>'1001'])->assertUnprocessable();
   $this->assertDatabaseCount('wallet_requests',1);$this->assertDatabaseCount('wallet_transactions',0);$r=WalletRequest::first();

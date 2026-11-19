@@ -19,9 +19,18 @@ class PortalController extends Controller
         app(InterestAccrualService::class)->accrue($user);
         $dailyEarnings = InvestmentAllocation::where('user_id', $user->id)->where('status', 'active')->get()->sum(fn ($i) => $i->dailyInterestCents());
         $wallet = Wallet::where('user_id', $user->id)->firstOrFail();
+        $referrer = $user->referrer;
+        $referrerData = $referrer
+            ? ['type' => 'member', 'id' => $referrer->id, 'name' => $referrer->name]
+            : ['type' => 'platform', 'name' => 'Mom’s Touch Platform'];
         return [
             'csrf' => csrf_token(),
-            'user' => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'is_admin' => $user->is_admin, 'created_at' => $user->created_at->toIso8601String()],
+            'user' => [
+                'id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone,
+                'is_admin' => $user->is_admin, 'created_at' => $user->created_at->toIso8601String(),
+                'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
+                'referrer' => $referrerData,
+            ],
             'wallet' => ['balance' => $wallet->balance_cents, 'held' => $wallet->held_cents, 'invested' => $wallet->invested_cents, 'earnings' => $wallet->earnings_cents, 'daily_earnings' => $dailyEarnings],
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
             'investments' => InvestmentAllocation::where('user_id', $user->id)->latest('id')->get()->map(fn ($i) => [
@@ -50,11 +59,18 @@ class PortalController extends Controller
             'type' => ['required', Rule::in(['deposit', 'withdraw', 'invest'])],
             'amount' => ['required', 'string', 'max:12', 'regex:/^\d{1,7}(\.\d{1,2})?$/'],
             'plan' => ['nullable', 'required_if:type,invest', Rule::in(array_keys(config('portal.plans')))],
+            'payment_method' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(['landbank', 'bpi', 'security_bank'])],
             'request_id' => ['required', 'uuid'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
         if ($input['type'] === 'invest') {
             $wallets->transact($request->user(), 'invest', $input['amount'], $input['plan'], $input['request_id']);
+        } elseif ($input['type'] === 'deposit') {
+            $depositRequest = $requests->submit($request->user(), 'deposit', $input['amount'], $input['request_id'], $input['note'] ?? null, $input['payment_method']);
+            return response()->json([
+                ...$this->payloadForUser($request->user()),
+                'submitted_request' => $depositRequest->publicData(),
+            ]);
         } else {
             $requests->submit($request->user(), $input['type'], $input['amount'], $input['request_id'], $input['note'] ?? null);
         }
