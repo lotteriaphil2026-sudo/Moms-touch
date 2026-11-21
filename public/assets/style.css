@@ -144,3 +144,10 @@
   .wallet-card .balance{font-size:32px}
   .wallet-bottom button{height:46px}
 }
+
+@media(max-width:800px){
+  html,body,#app{width:100%;min-width:0;max-width:100%;overflow-x:hidden}
+  input:not([type="checkbox"]):not([type="radio"]),select,textarea{
+    font-size:16px!important;
+  }
+}

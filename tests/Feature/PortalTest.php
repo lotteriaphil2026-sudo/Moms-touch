@@ -43,6 +43,7 @@ class PortalTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('lang="en"', false)
+            ->assertSee('minimum-scale=1,maximum-scale=1,user-scalable=no', false)
             ->assertSee('PORTAL_CONFIG')
             ->assertSee('property="og:title"', false)
             ->assertSee('property="og:image"', false)
