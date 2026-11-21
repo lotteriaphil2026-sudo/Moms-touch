@@ -59,7 +59,7 @@ Use PHP 8.4+, Composer 2, and Laravel’s PHP extensions, including PDO MySQL or
 
 ## Wallet operations and approval rules
 
-`PORTAL_FINANCIAL_OPERATIONS_ENABLED=false` blocks member financial requests, admin reviews, direct credits, plan grants, and interest accrual. It remains off in the deployment template. Only enable it after the operator has established deposit evidence, payout instructions, reconciliation, and the plan/principal rules. `PORTAL_DEPOSIT_QR_DEMO_MODE=true` displays non-payable test QRs and prevents approval of those requests. Keep it true for testing; setting it false alone does not configure real payment QR codes. Rebuild the configuration cache after changing a flag.
+`PORTAL_FINANCIAL_OPERATIONS_ENABLED=false` blocks member financial requests, admin reviews, direct credits, plan grants, and interest accrual. It remains off in the deployment template. Only enable it after the operator has established deposit evidence, payout instructions, reconciliation, and the plan/principal rules. `PORTAL_DEPOSIT_QR_DEMO_MODE=false` uses the configured BPI, LANDBANK, and Security Bank QR images; `true` marks deposit requests as demo-only and prevents approval. Rebuild the configuration cache after changing a flag.
 
 When enabled:
 

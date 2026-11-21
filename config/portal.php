@@ -2,7 +2,7 @@
 return [
     'financial_operations_enabled' => (bool) env('PORTAL_FINANCIAL_OPERATIONS_ENABLED', false),
     'registration_enabled' => (bool) env('PORTAL_REGISTRATION_ENABLED', false),
-    'deposit_qr_demo_mode' => (bool) env('PORTAL_DEPOSIT_QR_DEMO_MODE', true),
+    'deposit_qr_demo_mode' => (bool) env('PORTAL_DEPOSIT_QR_DEMO_MODE', false),
     // Basis points are fractions of one percent: 60 bps = 0.60% per day.
     'plans' => [
         'select' => ['name' => 'Mom’s Select', 'minimum_cents' => 500000, 'daily_rate_bps' => 60, 'term_days' => 160],

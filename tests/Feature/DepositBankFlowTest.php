@@ -69,4 +69,25 @@ class DepositBankFlowTest extends TestCase
 
         $this->assertDatabaseCount('wallet_requests', 0);
     }
+
+    public function test_configured_bank_deposit_uses_real_qr_mode(): void
+    {
+        config(['portal.deposit_qr_demo_mode' => false]);
+        $member = $this->account();
+
+        $this->actingAs($member)->postJson('/portal/transactions', [
+            'type' => 'deposit',
+            'amount' => '500',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ])
+            ->assertOk()
+            ->assertJsonPath('submitted_request.payment_method', 'bpi')
+            ->assertJsonPath('submitted_request.test_only', false);
+
+        $this->assertDatabaseHas('wallet_requests', [
+            'payment_method' => 'bpi',
+            'test_only' => false,
+        ]);
+    }
 }
