@@ -5,6 +5,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\{Auth, DB, Hash, Password};
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\{Rules, ValidationException};
 class AuthController extends Controller
 {
@@ -29,6 +30,7 @@ class AuthController extends Controller
         $request->merge([
             'email' => strtolower(trim((string) $request->input('email'))),
             'phone' => trim((string) $request->input('phone')),
+            'address' => trim((string) $request->input('address')),
             'referral_code' => $referralCode === '' ? null : $referralCode,
         ]);
         $input = $request->validate([
@@ -47,6 +49,10 @@ class AuthController extends Controller
                     }
                 },
             ],
+            'date_of_birth' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'address' => ['required', 'string', 'max:500'],
+            'gender' => ['required', Rule::in(['Male', 'Female', 'Other', 'Prefer not to say'])],
+            'marital_status' => ['required', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
             'password' => ['required', 'confirmed', 'max:128', Rules\Password::min(8)],
         ]);
         $referrer = isset($input['referral_code'])
@@ -57,6 +63,10 @@ class AuthController extends Controller
                 'name' => $input['name'],
                 'email' => $input['email'],
                 'phone' => trim($input['phone']),
+                'date_of_birth' => $input['date_of_birth'],
+                'address' => $input['address'],
+                'gender' => $input['gender'],
+                'marital_status' => $input['marital_status'],
                 'password' => Hash::make($input['password']),
             ]);
             if ($referrer) {

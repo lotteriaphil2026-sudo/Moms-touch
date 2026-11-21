@@ -27,6 +27,8 @@ class PortalController extends Controller
             'csrf' => csrf_token(),
             'user' => [
                 'id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone,
+                'date_of_birth' => $user->date_of_birth?->format('Y-m-d'), 'address' => $user->address,
+                'gender' => $user->gender, 'marital_status' => $user->marital_status,
                 'is_admin' => $user->is_admin, 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
                 'referrer' => $referrerData,

@@ -25,7 +25,7 @@ class AdminWorkflowTest extends TestCase
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
  }
  public function test_registration_and_profile_updates_cannot_elevate_roles(): void {
-  $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','phone'=>'+639171234567','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);
+  $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','phone'=>'+639171234567','date_of_birth'=>'1990-01-01','address'=>'123 Example Street, Makati City','gender'=>'Other','marital_status'=>'Single','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);
   $this->patchJson('/portal/profile',['name'=>'Still a member','is_admin'=>true])->assertOk()->assertJsonPath('user.is_admin',false);$this->getJson('/portal/admin/users')->assertForbidden();
  }
  public function test_admin_sign_in_returns_the_server_assigned_role(): void {

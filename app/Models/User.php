@@ -26,6 +26,10 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'date_of_birth',
+        'address',
+        'gender',
+        'marital_status',
         'password',
     ];
 
@@ -48,6 +52,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'date_of_birth' => 'date:Y-m-d',
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];

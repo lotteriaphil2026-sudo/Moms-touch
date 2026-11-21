@@ -64,6 +64,10 @@ class MemberSignInTest extends TestCase
                 'name' => 'New Member',
                 'email' => 'new-member@example.test',
                 'phone' => '+639171234567',
+                'date_of_birth' => '1990-01-01',
+                'address' => '123 Example Street, Makati City',
+                'gender' => 'Other',
+                'marital_status' => 'Single',
                 'password' => 'A-strong-password!9',
                 'password_confirmation' => 'A-strong-password!9',
             ])

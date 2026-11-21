@@ -55,12 +55,38 @@ class PortalTest extends TestCase
     }
     public function test_registration_creates_a_zero_balance_wallet_and_hashes_password(): void
     {
-        $this->postJson('/portal/register', ['name' => 'Jamie Lee', 'email' => 'JAMIE@example.test', 'phone' => '+639171234567', 'password' => 'A-strong-password!9', 'password_confirmation' => 'A-strong-password!9'])
-            ->assertOk()->assertJsonPath('user.email', 'jamie@example.test')->assertJsonPath('user.phone', '+639171234567')->assertJsonPath('wallet.balance', 0)->assertJsonPath('wallet.earnings', 0)->assertJsonStructure(['csrf']);
+        $this->postJson('/portal/register', [
+            'name' => 'Jamie Lee',
+            'email' => 'JAMIE@example.test',
+            'phone' => '+639171234567',
+            'date_of_birth' => '1995-03-08',
+            'address' => '123 Example Street, Makati City',
+            'gender' => 'Female',
+            'marital_status' => 'Single',
+            'password' => 'A-strong-password!9',
+            'password_confirmation' => 'A-strong-password!9',
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.email', 'jamie@example.test')
+            ->assertJsonPath('user.phone', '+639171234567')
+            ->assertJsonPath('user.date_of_birth', '1995-03-08')
+            ->assertJsonPath('user.address', '123 Example Street, Makati City')
+            ->assertJsonPath('user.gender', 'Female')
+            ->assertJsonPath('user.marital_status', 'Single')
+            ->assertJsonPath('wallet.balance', 0)
+            ->assertJsonPath('wallet.earnings', 0)
+            ->assertJsonStructure(['csrf']);
         $this->assertAuthenticated();
         $this->assertTrue(Hash::check('A-strong-password!9', User::first()->password));
         $this->assertDatabaseCount('wallets', 1);
-        $this->assertDatabaseHas('users', ['email' => 'jamie@example.test', 'phone' => '+639171234567']);
+        $this->assertDatabaseHas('users', [
+            'email' => 'jamie@example.test',
+            'phone' => '+639171234567',
+            'date_of_birth' => '1995-03-08',
+            'address' => '123 Example Street, Makati City',
+            'gender' => 'Female',
+            'marital_status' => 'Single',
+        ]);
     }
 
     public function test_registration_requires_a_valid_phone_number(): void
@@ -70,10 +96,41 @@ class PortalTest extends TestCase
                 'name' => 'Jamie Lee',
                 'email' => 'jamie@example.test',
                 'phone' => $phone,
+                'date_of_birth' => '1995-03-08',
+                'address' => '123 Example Street, Makati City',
+                'gender' => 'Female',
+                'marital_status' => 'Single',
                 'password' => 'A-strong-password!9',
                 'password_confirmation' => 'A-strong-password!9',
             ])->assertUnprocessable()->assertJsonValidationErrors('phone');
         }
+
+        $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_registration_requires_valid_profile_details(): void
+    {
+        $payload = [
+            'name' => 'Jamie Lee',
+            'email' => 'jamie@example.test',
+            'phone' => '+639171234567',
+            'password' => 'A-strong-password!9',
+            'password_confirmation' => 'A-strong-password!9',
+        ];
+
+        $this->postJson('/portal/register', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['date_of_birth', 'address', 'gender', 'marital_status']);
+
+        $this->postJson('/portal/register', [
+            ...$payload,
+            'date_of_birth' => now()->addDay()->toDateString(),
+            'address' => '123 Example Street, Makati City',
+            'gender' => 'not-listed',
+            'marital_status' => 'Divorced',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['date_of_birth', 'gender', 'marital_status']);
 
         $this->assertDatabaseCount('users', 0);
     }

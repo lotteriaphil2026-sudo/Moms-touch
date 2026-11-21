@@ -151,3 +151,17 @@
     font-size:16px!important;
   }
 }
+.field textarea{
+  width:100%;
+  min-height:88px;
+  padding:13px 14px;
+  border:1px solid #e8e2d7;
+  border-radius:7px;
+  outline-offset:2px;
+  background:#fff;
+  color:#4d4434;
+  font:12px var(--font);
+  line-height:1.6;
+  resize:vertical;
+}
+.field textarea::placeholder{color:#c0b6a5}
