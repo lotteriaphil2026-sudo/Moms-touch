@@ -21,7 +21,7 @@ class WalletService
             throw ValidationException::withMessages(['amount' => 'This amount is below the plan’s minimum allocation.']);
         }
         $fingerprint = hash('sha256', $type.'|'.$cents.'|'.($type === 'invest' ? $plan : ''));
-        DB::transaction(function () use ($user, $type, $cents, $plan, $planDetails, $requestId, $fingerprint) {
+        $created = DB::transaction(function () use ($user, $type, $cents, $plan, $planDetails, $requestId, $fingerprint) {
             // Every registered account gets exactly one wallet at account creation.
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $existing = WalletTransaction::where('user_id', $user->id)->where('request_id', $requestId)->first();
@@ -29,7 +29,7 @@ class WalletService
                 if (!hash_equals($existing->request_fingerprint, $fingerprint)) {
                     throw ValidationException::withMessages(['request_id' => 'This transaction reference has already been used with different details.']);
                 }
-                return;
+                return false;
             }
             if (WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->exists()) {
                 throw ValidationException::withMessages(['request_id' => 'This reference is already in use.']);
@@ -68,6 +68,16 @@ class WalletService
                 'amount_cents' => $cents, 'balance_after_cents' => $wallet->balance_cents,
                 'status' => 'completed',
             ]);
+            return true;
         }, 3);
+
+        if ($created) {
+            $message = match ($type) {
+                'deposit' => 'Funds were credited to your wallet.',
+                'withdraw' => 'A wallet withdrawal was completed. Sign in to view the details.',
+                default => 'Your investment was created. Sign in to view the plan details.',
+            };
+            app(WebPushNotificationService::class)->notify($user->id, $message);
+        }
     }
 }

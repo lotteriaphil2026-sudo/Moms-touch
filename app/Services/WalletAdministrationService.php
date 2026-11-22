@@ -21,14 +21,14 @@ class WalletAdministrationService
         $note = trim($note);
         $fingerprint = hash('sha256', $action.'|'.$member->id.'|'.$cents.'|'.($details ? $plan : '').'|'.$note);
         app(InterestAccrualService::class)->accrue($member);
-        DB::transaction(function () use ($actor, $member, $action, $cents, $details, $plan, $note, $requestId, $fingerprint) {
+        $created = DB::transaction(function () use ($actor, $member, $action, $cents, $details, $plan, $note, $requestId, $fingerprint) {
             $wallet = Wallet::where('user_id', $member->id)->lockForUpdate()->firstOrFail();
             $existing = AdminAction::where('actor_id', $actor->id)->where('request_id', $requestId)->first();
             if ($existing) {
                 if (!hash_equals($existing->request_fingerprint, $fingerprint)) {
                     throw ValidationException::withMessages(['request_id' => 'This admin reference was already used with different details.']);
                 }
-                return;
+                return false;
             }
             if (WalletRequest::where('user_id', $member->id)->where('request_id', $requestId)->exists()) {
                 throw ValidationException::withMessages(['request_id' => 'This reference is already in use.']);
@@ -53,6 +53,14 @@ class WalletAdministrationService
                 'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'action' => $action,
                 'amount_cents' => $cents, 'note' => $note, 'metadata' => $details ? ['plan' => $plan,
                     'plan_name' => $details['name'], 'rate_bps' => $details['daily_rate_bps'], 'term_days' => $details['term_days'], 'allocation_reference' => $allocation->reference] : []]);
+            return true;
         }, 3);
+
+        if ($created) {
+            $message = $details
+                ? 'An investment plan was added to your account. Sign in to view the details.'
+                : 'Funds were credited to your wallet.';
+            app(WebPushNotificationService::class)->notify($member->id, $message);
+        }
     }
 }

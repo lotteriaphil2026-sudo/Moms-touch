@@ -2,6 +2,22 @@
 use App\Models\{MemberSignIn, User};
 use App\Services\InterestAccrualService;
 use Illuminate\Support\Facades\{Artisan, Schedule};
+use Minishlink\WebPush\VAPID;
+
+Artisan::command('portal:push-keys', function () {
+    try {
+        $keys = VAPID::createVapidKeys();
+    } catch (\RuntimeException|\ErrorException $exception) {
+        $this->error('Unable to generate VAPID keys. Check the PHP OpenSSL configuration: '.$exception->getMessage());
+
+        return 1;
+    }
+
+    $this->line('WEB_PUSH_VAPID_PUBLIC_KEY='.$keys['publicKey']);
+    $this->line('WEB_PUSH_VAPID_PRIVATE_KEY='.$keys['privateKey']);
+    $this->warn('Store the private key securely. Keep this key pair stable after users subscribe.');
+})->purpose('Generate VAPID credentials for opt-in phone push notifications');
+
 Artisan::command('portal:accrue-interest', function (InterestAccrualService $interest) {
     if (!config('portal.financial_operations_enabled')) { $this->info('Wallet operations are paused. No interest credited.'); return; }
     $total = 0;

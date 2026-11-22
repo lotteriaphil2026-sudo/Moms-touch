@@ -10,7 +10,7 @@ class InterestAccrualService
     {
         if (!config('portal.financial_operations_enabled')) { return 0; }
         $asOf ??= CarbonImmutable::now();
-        return DB::transaction(function () use ($user, $asOf) {
+        $credited = DB::transaction(function () use ($user, $asOf) {
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
             if (!$wallet) { return 0; }
             $credited = 0;
@@ -43,5 +43,14 @@ class InterestAccrualService
             $wallet->save();
             return $credited;
         }, 3);
+
+        if ($credited > 0) {
+            app(WebPushNotificationService::class)->notify(
+                $user->id,
+                'Daily interest was credited to your wallet. Sign in to view the details.'
+            );
+        }
+
+        return $credited;
     }
 }

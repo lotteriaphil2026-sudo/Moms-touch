@@ -18,14 +18,14 @@ class WalletRequestService
         $note = trim($note ?? '');
         $fingerprint = hash('sha256', $type.'|'.$cents.'|'.$note.($paymentMethod === null ? '' : '|'.$paymentMethod));
         app(InterestAccrualService::class)->accrue($user);
-        return DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod) {
+        [$request, $created] = DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod) {
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $existing = WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->first();
             if ($existing) {
                 if (!hash_equals($existing->request_fingerprint, $fingerprint)) {
                     throw ValidationException::withMessages(['request_id' => 'This reference was already used with different details.']);
                 }
-                return $existing;
+                return [$existing, false];
             }
             if (WalletTransaction::where('user_id', $user->id)->where('request_id', $requestId)->exists()) {
                 throw ValidationException::withMessages(['request_id' => 'This reference is already in use.']);
@@ -38,12 +38,21 @@ class WalletRequestService
                 $wallet->held_cents += $cents;
                 $wallet->save();
             }
-            return WalletRequest::create(['reference' => (string) Str::uuid(), 'user_id' => $user->id,
+            return [WalletRequest::create(['reference' => (string) Str::uuid(), 'user_id' => $user->id,
                 'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'type' => $type,
                 'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending',
                 'payment_method' => $paymentMethod,
-                'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]);
+                'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]), true];
         }, 3);
+
+        if ($created && !$request->test_only) {
+            $message = $type === 'deposit'
+                ? 'Your deposit request was submitted for review.'
+                : 'Your withdrawal request was submitted for review.';
+            app(WebPushNotificationService::class)->notify($user->id, $message);
+        }
+
+        return $request;
     }
 
     public function review(User $actor, WalletRequest $request, string $decision, string $note): WalletRequest
@@ -51,7 +60,7 @@ class WalletRequestService
         abort_unless($actor->is_admin, 403, 'Administrator access is required.');
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
         abort_unless(in_array($decision, ['approve', 'reject'], true), 422, 'Invalid decision.');
-        return DB::transaction(function () use ($actor, $request, $decision, $note) {
+        [$request, $changed] = DB::transaction(function () use ($actor, $request, $decision, $note) {
             // All financial workflows acquire the wallet lock before dependent records.
             $wallet = Wallet::where('user_id', $request->user_id)->lockForUpdate()->firstOrFail();
             $request = WalletRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
@@ -59,7 +68,7 @@ class WalletRequestService
             if ($request->test_only && $decision === 'approve') {
                 throw ValidationException::withMessages(['decision' => 'Demo deposit requests cannot be approved.']);
             }
-            if ($request->status === $status) { return $request; }
+            if ($request->status === $status) { return [$request, false]; }
             if ($request->status !== 'pending') {
                 throw ValidationException::withMessages(['decision' => 'This request has already been reviewed.']);
             }
@@ -85,7 +94,17 @@ class WalletRequestService
                 'request_fingerprint' => hash('sha256', $request->reference.'|'.$status),
                 'action' => $decision === 'reject' ? 'request_rejected' : ($request->type === 'deposit' ? 'deposit_approved' : 'withdrawal_approved'),
                 'amount_cents' => $request->amount_cents, 'note' => trim($note), 'metadata' => ['type' => $request->type, 'request_reference' => $request->reference]]);
-            return $request;
+            return [$request, true];
         }, 3);
+
+        if ($changed && !$request->test_only) {
+            $type = $request->type === 'withdraw' ? 'withdrawal' : 'deposit';
+            $message = $request->status === 'approved'
+                ? 'Your '.$type.' request was approved. Sign in to view the account update.'
+                : 'Your '.$type.' request was declined. Sign in to view the account update.';
+            app(WebPushNotificationService::class)->notify($request->user_id, $message);
+        }
+
+        return $request;
     }
 }
