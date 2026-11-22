@@ -44,7 +44,7 @@ class PortalTest extends TestCase
             ->assertOk()
             ->assertSee('lang="en"', false)
             ->assertSee('minimum-scale=1,maximum-scale=1,user-scalable=no', false)
-            ->assertSee('rel="apple-touch-icon"', false)
+            ->assertSee('rel="apple-touch-icon" sizes="512x512" href="/unnamed.png"', false)
             ->assertSee('rel="manifest" href="/site.webmanifest"', false)
             ->assertSee('PORTAL_CONFIG')
             ->assertSee('property="og:title"', false)
