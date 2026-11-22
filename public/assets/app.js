@@ -17,6 +17,7 @@ let eventTab='ongoing',menuFilter='All',activityFilter='all';let isLoading=false
 window.PORTAL_BANK_LABELS={landbank:'Landbank',bpi:'BPI',security_bank:'Security Bank'};
 const depositBankLabels=window.PORTAL_BANK_LABELS;
 const depositQrImages={landbank:'/LANDBANK.png',bpi:'/bpi.png',security_bank:'/Security%20Bank.png'};
+const depositBankLogos={landbank:'/assets/landbank-logo.svg',bpi:'/assets/bpi-logo.svg',security_bank:'/assets/security-bank-logo.svg'};
 const nav=[['dashboard','grid','Overview'],['wallet','wallet','My wallet'],['investments','trend','Investments'],['events','events','Events & offers'],['franchising','store','Franchising'],['menu','burger','Our menu'],['account','user','My account']];
 function route(){let p=location.hash.replace('#/','').split('?')[0];return [...nav.map(n=>n[0]),'login','register','forgot','admin'].includes(p)?p:'login';}
 function go(p){if(route()===p){render();}else location.hash='/'+p;}
@@ -73,7 +74,7 @@ function amountModal(type,planId='select'){
 
 function openDepositBankModal(data){
  pendingDeposit=data;
- openModal(`<h2 id="dialog-title">Choose a bank</h2><p>Choose the QR that matches your bank.</p><div class="deposit-bank-choices" style="display:grid;gap:10px;margin:20px 0">${Object.entries(depositBankLabels).map(([id,name])=>`<button class="btn btn-outline" style="width:100%;justify-content:flex-start" type="button" data-action="deposit-bank" data-id="${id}"><img src="${depositQrImages[id]}" alt="" style="width:38px;height:38px;object-fit:contain;border-radius:4px">${esc(name)} ${I('arrow')}</button>`).join('')}</div><button class="btn btn-dark" type="button" data-action="close">Cancel</button>`);
+ openModal(`<h2 id="dialog-title">Choose a bank</h2><p>Select a bank to view its payment QR code.</p><div class="deposit-bank-choices" style="display:grid;gap:10px;margin:20px 0">${Object.entries(depositBankLabels).map(([id,name])=>`<button class="deposit-bank-choice btn btn-outline" type="button" data-action="deposit-bank" data-id="${id}" aria-label="View ${esc(name)} payment QR"><span class="deposit-bank-logo"><img src="${depositBankLogos[id]}" alt="${esc(name)} logo"></span><span class="deposit-bank-name">${esc(name)}</span>${I('arrow')}</button>`).join('')}</div><button class="btn btn-dark" type="button" data-action="close">Cancel</button>`);
 }
 
 async function submitDemoDeposit(bank,button){
