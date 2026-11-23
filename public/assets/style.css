@@ -204,3 +204,19 @@
   font-weight:700;
   color:#4f483d;
 }
+.tx-copy{
+  display:grid;
+  gap:3px;
+  min-width:0;
+  white-space:normal;
+}
+.tx-date-time{
+  display:none;
+  color:#a09685;
+  font-size:9px;
+  font-weight:400;
+  line-height:1.35;
+}
+@media(max-width:600px){
+  .transactions .tx-date-time{display:block}
+}

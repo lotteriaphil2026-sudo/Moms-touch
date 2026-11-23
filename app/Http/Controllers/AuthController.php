@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{User, Wallet};
+use App\Services\InvestmentReminderService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\{Auth, DB, Hash, Password};
@@ -21,6 +22,10 @@ class AuthController extends Controller
             $this->recordMemberSignIn($request, $user);
         }
         $request->session()->regenerate();
+        if ($user instanceof User && ! $user->is_admin) {
+            app(InvestmentReminderService::class)->sendIfEligible($user);
+        }
+
         return $portal->state($request);
     }
     public function register(Request $request, PortalController $portal): JsonResponse

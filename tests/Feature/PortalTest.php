@@ -190,13 +190,22 @@ class PortalTest extends TestCase
     {
         $this->actingAs($this->member());
         $this->approvedTransaction('deposit', '10000')->assertOk();
-        $this->approvedTransaction('invest', '5000.25', 'select')->assertOk()
+        $investment = $this->approvedTransaction('invest', '5000.25', 'select')->assertOk()
             ->assertJsonPath('wallet.balance', 499975)->assertJsonPath('wallet.invested', 500025)
             ->assertJsonPath('wallet.earnings', 0)->assertJsonPath('investments.0.status', 'active')
-            ->assertJsonPath('investments.0.term_days', 160)->assertJsonPath('wallet.daily_earnings', 3000);
+            ->assertJsonPath('investments.0.term_days', 160)->assertJsonPath('wallet.daily_earnings', 3000)
+            ->assertJsonPath('completed_transaction.amount', 500025)
+            ->assertJsonPath('completed_transaction.description', 'Mom’s Select allocation')
+            ->assertJsonPath('completed_transaction.status', 'completed')
+            ->assertJsonStructure(['completed_transaction' => ['reference', 'created_at']]);
+        $this->assertSame($investment->json('transactions.0.id'), $investment->json('completed_transaction.reference'));
         $this->assertSame('0.006000', InvestmentAllocation::first()->daily_interest_rate);
         $this->travel(3)->days();
-        $this->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings', 9000)->assertJsonPath('wallet.balance', 508975);
+        $this->getJson('/portal/state')->assertOk()
+            ->assertJsonPath('wallet.earnings', 9000)
+            ->assertJsonPath('wallet.balance', 508975)
+            ->assertJsonPath('transactions.0.type', 'interest')
+            ->assertJsonStructure(['transactions' => [['created_at']]]);
     }
     public function test_repeating_a_transaction_does_not_double_charge_and_modified_replay_fails(): void
     {

@@ -1,6 +1,6 @@
 <?php
 use App\Models\{MemberSignIn, User};
-use App\Services\InterestAccrualService;
+use App\Services\{InterestAccrualService, InvestmentReminderService};
 use Illuminate\Support\Facades\{Artisan, Schedule};
 use Minishlink\WebPush\VAPID;
 
@@ -28,6 +28,33 @@ Artisan::command('portal:accrue-interest', function (InterestAccrualService $int
     $this->info('Interest credited: '.number_format($total / 100, 2).' PHP.');
 })->purpose('Credit completed 24-hour periods for enabled investment plans');
 Schedule::command('portal:accrue-interest')->everyMinute()->withoutOverlapping();
+
+Artisan::command('portal:investment-reminders', function (InvestmentReminderService $reminders) {
+    if (! config('portal.financial_operations_enabled')) {
+        $this->info('Wallet operations are paused. No investment reminders sent.');
+
+        return;
+    }
+
+    $checked = 0;
+    User::query()
+        ->where('is_admin', false)
+        ->whereExists(fn ($query) => $query->selectRaw('1')
+            ->from('push_subscriptions')
+            ->whereColumn('push_subscriptions.user_id', 'users.id'))
+        ->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('investment_allocations')
+            ->whereColumn('investment_allocations.user_id', 'users.id'))
+        ->chunkById(100, function ($users) use ($reminders, &$checked): void {
+            foreach ($users as $user) {
+                $reminders->sendIfEligible($user);
+                $checked++;
+            }
+        });
+
+    $this->info("Checked {$checked} eligible member accounts.");
+})->purpose('Send the daily investment reminder to subscribed members without an investment');
+Schedule::command('portal:investment-reminders')->dailyAt('10:00')->timezone('Asia/Manila')->withoutOverlapping();
 
 Artisan::command('portal:prune-sign-ins', function () {
     $deleted = MemberSignIn::where('created_at', '<', now()->subDays(30))->delete();

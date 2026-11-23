@@ -20,10 +20,21 @@ class SendWebPushNotification implements ShouldQueue
     public function __construct(
         public int $userId,
         public string $message,
+        public string $url = '/#/wallet',
+        public string $title = 'Mom’s Touch account update',
+        public bool $onlyIfNoInvestment = false,
+        public ?string $investmentReminderDay = null,
     ) {}
 
     public function handle(WebPushNotificationService $notifications): void
     {
-        $notifications->send($this->userId, $this->message);
+        $notifications->send(
+            $this->userId,
+            $this->message,
+            $this->url,
+            $this->title,
+            $this->onlyIfNoInvestment,
+            $this->investmentReminderDay
+        );
     }
 }

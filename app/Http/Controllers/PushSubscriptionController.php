@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PushSubscription;
+use App\Services\InvestmentReminderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -36,6 +37,10 @@ class PushSubscriptionController extends Controller
                 'content_encoding' => 'aes128gcm',
             ]
         );
+
+        if (! $request->user()->is_admin) {
+            app(InvestmentReminderService::class)->sendIfEligible($request->user());
+        }
 
         return response()->json(['subscribed' => true], 201);
     }

@@ -69,6 +69,20 @@ class PortalController extends Controller
         ]);
         if ($input['type'] === 'invest') {
             $wallets->transact($request->user(), 'invest', $input['amount'], $input['plan'], $input['request_id']);
+            $transaction = WalletTransaction::where('user_id', $request->user()->id)
+                ->where('request_id', $input['request_id'])
+                ->firstOrFail();
+
+            return response()->json([
+                ...$this->payloadForUser($request->user()),
+                'completed_transaction' => [
+                    'reference' => $transaction->reference,
+                    'description' => $transaction->description,
+                    'amount' => $transaction->amount_cents,
+                    'status' => $transaction->status,
+                    'created_at' => $transaction->created_at->toIso8601String(),
+                ],
+            ]);
         } elseif ($input['type'] === 'deposit') {
             $depositRequest = $requests->submit($request->user(), 'deposit', $input['amount'], $input['request_id'], $input['note'] ?? null, $input['payment_method']);
             return response()->json([

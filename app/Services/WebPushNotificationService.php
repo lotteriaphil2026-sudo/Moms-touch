@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\SendWebPushNotification;
-use App\Models\PushSubscription;
+use App\Models\{InvestmentAllocation, PushSubscription, User};
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
@@ -11,17 +11,49 @@ use Minishlink\WebPush\WebPush;
 
 class WebPushNotificationService
 {
-    public function notify(int $userId, string $message): void
+    public function notify(
+        int $userId,
+        string $message,
+        string $url = '/#/wallet',
+        string $title = 'Mom’s Touch account update',
+        bool $onlyIfNoInvestment = false,
+        ?string $investmentReminderDay = null,
+    ): bool
     {
         if (! $this->isConfigured() || ! PushSubscription::where('user_id', $userId)->exists()) {
-            return;
+            return false;
         }
 
-        SendWebPushNotification::dispatch($userId, $message)->afterCommit();
+        SendWebPushNotification::dispatch($userId, $message, $url, $title, $onlyIfNoInvestment, $investmentReminderDay)->afterCommit();
+
+        return true;
     }
 
-    public function send(int $userId, string $message): void
+    public function send(
+        int $userId,
+        string $message,
+        string $url = '/#/wallet',
+        string $title = 'Mom’s Touch account update',
+        bool $onlyIfNoInvestment = false,
+        ?string $investmentReminderDay = null,
+    ): void
     {
+        if ($onlyIfNoInvestment) {
+            $member = User::find($userId);
+            $today = now('Asia/Manila')->toDateString();
+            $lastReminderDay = $member?->investment_nudge_sent_at
+                ?->timezone('Asia/Manila')
+                ->toDateString();
+
+            if (! $member
+                || ! $investmentReminderDay
+                || $investmentReminderDay !== $today
+                || $lastReminderDay !== $investmentReminderDay
+                || InvestmentAllocation::where('user_id', $userId)->exists()) {
+                return;
+            }
+        }
+
         if (! $this->isConfigured()) {
             Log::error('Web Push delivery was skipped because VAPID credentials are not configured.');
 
@@ -48,9 +80,9 @@ class WebPushNotificationService
         }
 
         $payload = json_encode([
-            'title' => 'Mom’s Touch account update',
+            'title' => $title,
             'body' => $message,
-            'url' => '/#/wallet',
+            'url' => $url,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
         $subscriptions = PushSubscription::where('user_id', $userId)->get();
