@@ -228,3 +228,4 @@
 .article-summary{padding:13px 15px;margin:14px 0;background:#f8f5ee;border-radius:9px}
 .article-summary .eyebrow{font-size:8px;color:#ba934b;letter-spacing:.08em}
 .article-summary p{margin:8px 0 0;color:#625b50;font-size:11px;line-height:1.6}
+.middle-grid.investments-only{grid-template-columns:1fr}
