@@ -171,9 +171,9 @@ if(form.id==='auth-form'){
  if(!native)throw new Error('Sign-in is temporarily unavailable. Please check back soon.');
  const kind=form.dataset.kind;
  if(kind==='forgot'){await api('forgot-password','POST',{email:data.email});errorIn(form,'If an account exists for this email, a password reset link has been requested.',true);}
- else{state=await api(kind==='register'?'register':'login','POST',{...data,remember:!!data.remember});go(isPortalAdmin()?'admin':authDestination());toast(isPortalAdmin()?'Welcome to administration.':'Welcome to your member space.');}
+ else{state=await api(kind==='register'?'register':'login','POST',{...data,remember:!!data.remember});if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);go(isPortalAdmin()?'admin':authDestination());toast(isPortalAdmin()?'Welcome to administration.':'Welcome to your member space.');}
 }
 }catch(err){errorIn(form,err.message);}finally{isLoading=false;if(submit.isConnected)submit.disabled=false;}});
 document.addEventListener('keydown',e=>{if(!currentModal)return;if(e.key==='Escape'){pendingDeposit=null;closeModal();return;}if(e.key==='Tab'){const elements=[...$('.modal').querySelectorAll('button,a,input,select,textarea,[tabindex="0"]')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=elements[0],last=elements.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('.modal'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('.modal'))){e.preventDefault();first?.focus();}}});
 window.addEventListener('hashchange',()=>{closeModal();render();window.scrollTo({top:0});});
-async function init(){if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}render();if(native)setInterval(refreshInvestmentEarnings,60000);}init();
+async function init(){if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}render();if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);if(native)setInterval(refreshInvestmentEarnings,60000);}init();
