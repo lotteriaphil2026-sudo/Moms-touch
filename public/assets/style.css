@@ -229,3 +229,5 @@
 .article-summary .eyebrow{font-size:8px;color:#ba934b;letter-spacing:.08em}
 .article-summary p{margin:8px 0 0;color:#625b50;font-size:11px;line-height:1.6}
 .middle-grid.investments-only{grid-template-columns:1fr}
+.franchise-promo{background-color:#f2f0e9;background-image:linear-gradient(90deg,rgba(242,240,233,.98) 0%,rgba(242,240,233,.9) 54%,rgba(242,240,233,.24) 100%),url('/Franchise.png');background-position:center;background-size:cover}
+.franchise-promo:after{display:none}
