@@ -68,9 +68,6 @@ class User extends Authenticatable
         });
 
         static::saving(function (User $user): void {
-            if ($user->exists && $user->isDirty('name') && $user->name) {
-                $user->referral_code = static::generateReferralCode($user->name, $user->id);
-            }
             $user->referrer_type = $user->referrer_id ? 'member' : 'platform';
         });
     }

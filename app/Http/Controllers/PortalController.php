@@ -100,8 +100,22 @@ class PortalController extends Controller
     }
     public function profile(Request $request): JsonResponse
     {
-        $input = $request->validate(['name' => ['required', 'string', 'max:80']]);
-        $request->user()->update(['name' => $input['name']]);
+        $input = $request->validate([
+            'name' => ['required', 'string', 'max:80'],
+            'referral_code' => [
+                'nullable',
+                'string',
+                'max:80',
+                'regex:/\A[A-Z0-9][A-Z0-9-]*[A-Z0-9]\z/',
+                \Illuminate\Validation\Rule::unique('users', 'referral_code')->ignore($request->user()->id),
+            ],
+        ]);
+        $updates = ['name' => trim($input['name'])];
+        if (!empty($input['referral_code'])) {
+            $updates['referral_code'] = strtoupper(trim($input['referral_code']));
+        }
+        $request->user()->forceFill($updates);
+        $request->user()->save();
         return $this->state($request);
     }
 }

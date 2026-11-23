@@ -73,6 +73,39 @@ class ReferralSystemTest extends TestCase
         $this->assertDatabaseCount('users', 0);
     }
 
+    public function test_member_can_edit_referral_code(): void
+    {
+        $member = User::factory()->create(['name' => 'Editing Member']);
+        Wallet::create(['user_id' => $member->id]);
+
+        $this->actingAs($member)
+            ->patchJson('/portal/profile', [
+                'name' => 'Editing Member',
+                'referral_code' => 'MY-CUSTOM-CODE',
+            ])
+            ->assertOk()
+            ->assertJsonPath('user.referral_code', 'MY-CUSTOM-CODE');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $member->id,
+            'referral_code' => 'MY-CUSTOM-CODE',
+        ]);
+    }
+
+    public function test_member_cannot_use_another_members_referral_code(): void
+    {
+        $first = User::factory()->create();
+        $second = User::factory()->create();
+
+        $this->actingAs($second)
+            ->patchJson('/portal/profile', [
+                'name' => $second->name,
+                'referral_code' => $first->referral_code,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('referral_code');
+    }
+
     public function test_new_member_receives_a_name_based_referral_code(): void
     {
         $referrer = User::factory()->create(['name' => 'Referring Member']);
