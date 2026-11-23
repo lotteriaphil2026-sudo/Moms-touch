@@ -82,20 +82,31 @@ class AdminWorkflowTest extends TestCase
   $wallet=Wallet::where('user_id',$u->id)->first();$this->assertSame(1000000,$wallet->balance_cents);$this->assertSame(0,$wallet->held_cents);$this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',2);
  }
  public function test_admin_credits_are_exact_idempotent_and_bound_to_recipient_and_amount(): void {
-  $u=$this->member();$other=$this->member();$admin=$this->member(true);$this->actingAs($admin);$id=(string)Str::uuid();
-  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('member.wallet.balance',500025);
-  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('member.wallet.balance',500025);
+  Queue::fake();config(['webpush.vapid.subject'=>'mailto:push@example.test','webpush.vapid.public_key'=>'public','webpush.vapid.private_key'=>'private']);
+  $u=$this->member();$other=$this->member();$admin=$this->member(true);$endpoint='https://fcm.googleapis.com/fcm/send/admin-funds';
+  PushSubscription::create(['user_id'=>$u->id,'endpoint_hash'=>hash('sha256',$endpoint),'endpoint'=>$endpoint,'public_key'=>str_repeat('A',87),'auth_token'=>str_repeat('B',22),'content_encoding'=>'aes128gcm']);
+  $this->actingAs($admin);$id=(string)Str::uuid();
+  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('notification_queued',true)->assertJsonPath('member.wallet.balance',500025);
+  Queue::assertPushed(SendWebPushNotification::class,fn (SendWebPushNotification $job)=>$job->userId===$u->id&&$job->url==='/#/wallet'&&str_contains($job->message,'Funds were credited'));
+  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('notification_queued',null)->assertJsonPath('member.wallet.balance',500025);
+  Queue::assertPushed(SendWebPushNotification::class,1);
   $this->send($u,'funds',['request_id'=>$id,'amount'=>'6000'])->assertUnprocessable();$this->send($other,'funds',['request_id'=>$id])->assertUnprocessable();
   $this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);$this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$u->id,'action'=>'funds_sent','amount_cents'=>500025]);$this->assertSame(0,Wallet::where('user_id',$other->id)->first()->balance_cents);
+ }
+ public function test_admin_fund_response_reports_when_recipient_has_no_phone_subscription(): void {
+  Queue::fake();config(['webpush.vapid.subject'=>'mailto:push@example.test','webpush.vapid.public_key'=>'public','webpush.vapid.private_key'=>'private']);
+  $u=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $this->send($u,'funds')->assertOk()->assertJsonPath('notification_queued',false)->assertJsonPath('member.wallet.balance',500025);
+  Queue::assertNotPushed(SendWebPushNotification::class);
  }
  public function test_admin_plan_grant_preserves_cash_snapshots_terms_and_accrues_correctly(): void {
   Queue::fake();config(['webpush.vapid.subject'=>'mailto:push@example.test','webpush.vapid.public_key'=>'public','webpush.vapid.private_key'=>'private']);
   $u=$this->member(false,'1000');$admin=$this->member(true);$endpoint='https://fcm.googleapis.com/fcm/send/assigned-plan';
   PushSubscription::create(['user_id'=>$u->id,'endpoint_hash'=>hash('sha256',$endpoint),'endpoint'=>$endpoint,'public_key'=>str_repeat('A',87),'auth_token'=>str_repeat('B',22),'content_encoding'=>'aes128gcm']);
   $this->actingAs($admin);$input=['amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid()];
-  $this->send($u,'plans',$input)->assertOk()->assertJsonPath('member.wallet.balance',100000)->assertJsonPath('member.wallet.invested',500000)->assertJsonPath('member.wallet.daily_earnings',3000)->assertJsonPath('member.investments.0.term_days',160)->assertJsonPath('member.investments.0.status','active')->assertJsonPath('member.transactions.0.type','plan_grant');
+  $this->send($u,'plans',$input)->assertOk()->assertJsonPath('notification_queued',true)->assertJsonPath('member.wallet.balance',100000)->assertJsonPath('member.wallet.invested',500000)->assertJsonPath('member.wallet.daily_earnings',3000)->assertJsonPath('member.investments.0.term_days',160)->assertJsonPath('member.investments.0.status','active')->assertJsonPath('member.transactions.0.type','plan_grant');
   Queue::assertPushed(SendWebPushNotification::class,fn (SendWebPushNotification $job)=>$job->userId===$u->id&&$job->url==='/#/investments'&&$job->title==='An investment plan was gifted to you'&&str_contains($job->message,'Mom’s Select')&&str_contains($job->message,'daily interest'));
-  $this->send($u,'plans',$input)->assertOk();Queue::assertPushed(SendWebPushNotification::class,1);$this->assertDatabaseCount('investment_allocations',1);$inv=InvestmentAllocation::first();$this->assertSame(60,$inv->rate_basis_points);$this->assertSame('0.006000',$inv->daily_interest_rate);
+  $this->send($u,'plans',$input)->assertOk()->assertJsonPath('notification_queued',null);Queue::assertPushed(SendWebPushNotification::class,1);$this->assertDatabaseCount('investment_allocations',1);$inv=InvestmentAllocation::first();$this->assertSame(60,$inv->rate_basis_points);$this->assertSame('0.006000',$inv->daily_interest_rate);
   $this->travel(1)->days();$this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings',3000)->assertJsonPath('wallet.balance',103000)->assertJsonPath('transactions.0.type','interest')->assertJsonPath('transactions.1.type','plan_grant');$this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'plan_grant','amount_cents'=>500000]);$this->assertDatabaseCount('admin_actions',1);
  }
  public function test_admin_amount_minimum_plan_and_reason_validation(): void {

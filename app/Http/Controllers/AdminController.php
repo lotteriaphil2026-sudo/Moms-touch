@@ -111,14 +111,14 @@ class AdminController extends Controller
     public function funds(Request $request, User $user, WalletAdministrationService $wallets, PortalController $portal): JsonResponse
     {
         $input = $this->validateSend($request);
-        $wallets->send($request->user(), $user, 'funds_sent', $input['amount'], null, $input['note'], $input['request_id']);
-        return response()->json(['message' => 'Wallet credited.', 'member' => $portal->payloadForUser($user)]);
+        $notificationQueued = $wallets->send($request->user(), $user, 'funds_sent', $input['amount'], null, $input['note'], $input['request_id']);
+        return response()->json(['message' => 'Wallet credited.', 'notification_queued' => $notificationQueued, 'member' => $portal->payloadForUser($user)]);
     }
     public function plans(Request $request, User $user, WalletAdministrationService $wallets, PortalController $portal): JsonResponse
     {
         $input = $this->validateSend($request, true);
-        $wallets->send($request->user(), $user, 'plan_assigned', $input['amount'], $input['plan'], $input['note'], $input['request_id']);
-        return response()->json(['message' => 'Plan assigned.', 'member' => $portal->payloadForUser($user)]);
+        $notificationQueued = $wallets->send($request->user(), $user, 'plan_assigned', $input['amount'], $input['plan'], $input['note'], $input['request_id']);
+        return response()->json(['message' => 'Plan assigned.', 'notification_queued' => $notificationQueued, 'member' => $portal->payloadForUser($user)]);
     }
     public function audit(Request $request): JsonResponse
     {

@@ -7,7 +7,7 @@ use Illuminate\Validation\ValidationException;
 
 class WalletAdministrationService
 {
-    public function send(User $actor, User $member, string $action, string $amount, ?string $plan, string $note, string $requestId): void
+    public function send(User $actor, User $member, string $action, string $amount, ?string $plan, string $note, string $requestId): ?bool
     {
         abort_unless($actor->is_admin, 403, 'Administrator access is required.');
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
@@ -56,16 +56,19 @@ class WalletAdministrationService
             return true;
         }, 3);
 
-        if ($created) {
-            $message = $details
-                ? $details['name'].' was gifted to your account and is now active. Open Investments to view the plan and its daily interest.'
-                : 'Funds were credited to your wallet.';
-            app(WebPushNotificationService::class)->notify(
-                $member->id,
-                $message,
-                $details ? '/#/investments' : '/#/wallet',
-                $details ? 'An investment plan was gifted to you' : 'Mom’s Touch account update'
-            );
+        if (! $created) {
+            return null;
         }
+
+        $message = $details
+            ? $details['name'].' was gifted to your account and is now active. Open Investments to view the plan and its daily interest.'
+            : 'Funds were credited to your wallet.';
+
+        return app(WebPushNotificationService::class)->notify(
+            $member->id,
+            $message,
+            $details ? '/#/investments' : '/#/wallet',
+            $details ? 'An investment plan was gifted to you' : 'Mom’s Touch account update'
+        );
     }
 }
