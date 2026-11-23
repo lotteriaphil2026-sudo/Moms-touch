@@ -33,7 +33,7 @@ class DepositBankFlowTest extends TestCase
 
         $response = $this->actingAs($member)->postJson('/portal/transactions', [
             'type' => 'deposit',
-            'amount' => '500',
+            'amount' => '5000',
             'payment_method' => 'bpi',
             'request_id' => (string) Str::uuid(),
         ]);
@@ -70,6 +70,26 @@ class DepositBankFlowTest extends TestCase
         $this->assertDatabaseCount('wallet_requests', 0);
     }
 
+    public function test_deposit_requests_require_at_least_five_thousand_pesos(): void
+    {
+        $member = $this->account();
+        $payload = [
+            'type' => 'deposit',
+            'amount' => '4999.99',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ];
+
+        $this->actingAs($member)->postJson('/portal/transactions', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('amount');
+        $this->assertDatabaseCount('wallet_requests', 0);
+
+        $this->postJson('/portal/transactions', [...$payload, 'amount' => '5000', 'request_id' => (string) Str::uuid()])
+            ->assertOk()
+            ->assertJsonPath('submitted_request.amount', 500000);
+    }
+
     public function test_configured_bank_deposit_uses_real_qr_mode(): void
     {
         config(['portal.deposit_qr_demo_mode' => false]);
@@ -77,7 +97,7 @@ class DepositBankFlowTest extends TestCase
 
         $this->actingAs($member)->postJson('/portal/transactions', [
             'type' => 'deposit',
-            'amount' => '500',
+            'amount' => '5000',
             'payment_method' => 'bpi',
             'request_id' => (string) Str::uuid(),
         ])

@@ -18,7 +18,7 @@ class AdminWorkflowTest extends TestCase
  private function review(WalletRequest $r,string $decision='approve'){return $this->postJson('/portal/admin/requests/'.$r->id.'/review',['decision'=>$decision,'note'=>'Reviewed and checked']);}
  private function send(User $u,string $kind,array $data=[]){return $this->postJson('/portal/admin/users/'.$u->id.'/'.$kind,[...['amount'=>'5000.25','note'=>'Member credit','request_id'=>(string)Str::uuid()],...$data]);}
  public function test_guests_and_members_cannot_use_any_admin_endpoint(): void {
-  $u=$this->member();$r=$this->walletRequest($u,'deposit','100');
+  $u=$this->member();$r=$this->walletRequest($u,'deposit','5000');
   $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
@@ -34,19 +34,19 @@ class AdminWorkflowTest extends TestCase
   $this->getJson('/portal/admin/overview')->assertOk();
  }
  public function test_members_see_only_their_own_wallet_requests_and_cannot_choose_another_owner(): void {
-  $first=$this->member();$second=$this->member();$this->walletRequest($first,'deposit','1000');$this->actingAs($second);
+  $first=$this->member();$second=$this->member();$this->walletRequest($first,'deposit','5000');$this->actingAs($second);
   $this->getJson('/portal/state')->assertOk()->assertJsonCount(0,'wallet_requests');
-  $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'500','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
+  $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
   $this->assertSame(1,WalletRequest::where('user_id',$first->id)->count());$this->assertSame(1,WalletRequest::where('user_id',$second->id)->count());
  }
  public function test_deposit_is_pending_until_approval_and_replays_do_not_duplicate_credit(): void {
   $u=$this->member();$admin=$this->member(true);$id=(string)Str::uuid();$this->actingAs($u);
-  $payload=['type'=>'deposit','amount'=>'1000.25','payment_method'=>'bpi','request_id'=>$id];
+  $payload=['type'=>'deposit','amount'=>'5000.25','payment_method'=>'bpi','request_id'=>$id];
   $this->postJson('/portal/transactions',[...$payload,'status'=>'approved','reviewed_by'=>$admin->id])->assertOk()->assertJsonPath('wallet.balance',0)->assertJsonPath('wallet_requests.0.status','pending');
   $this->postJson('/portal/transactions',$payload)->assertOk();$this->postJson('/portal/transactions',[...$payload,'amount'=>'1001'])->assertUnprocessable();
   $this->assertDatabaseCount('wallet_requests',1);$this->assertDatabaseCount('wallet_transactions',0);$r=WalletRequest::first();
   $this->actingAs($admin);$this->review($r)->assertOk();$this->review($r)->assertOk();$this->review($r,'reject')->assertUnprocessable();
-  $this->assertSame(100025,Wallet::where('user_id',$u->id)->first()->balance_cents);$this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);
+  $this->assertSame(500025,Wallet::where('user_id',$u->id)->first()->balance_cents);$this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);
   $this->assertDatabaseHas('wallet_requests',['id'=>$r->id,'reviewed_by'=>$admin->id,'status'=>'approved']);
   $this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet_requests.0.review_note','Reviewed and checked');
  }
@@ -61,7 +61,7 @@ class AdminWorkflowTest extends TestCase
   $w=Wallet::where('user_id',$u->id)->first();$this->assertSame(899950,$w->balance_cents);$this->assertSame(0,$w->held_cents);$this->assertDatabaseCount('wallet_transactions',2);$this->assertDatabaseCount('admin_actions',1);
  }
  public function test_rejection_refunds_a_hold_once_and_never_credits_a_rejected_deposit(): void {
-  $u=$this->member(false,'10000');$admin=$this->member(true);$w=$this->walletRequest($u,'withdraw','1000');$d=$this->walletRequest($u,'deposit','2000');$this->actingAs($admin);
+  $u=$this->member(false,'10000');$admin=$this->member(true);$w=$this->walletRequest($u,'withdraw','1000');$d=$this->walletRequest($u,'deposit','5000');$this->actingAs($admin);
   $this->review($w,'reject')->assertOk();$this->review($w,'reject')->assertOk();$this->review($w)->assertUnprocessable();$this->review($d,'reject')->assertOk();
   $wallet=Wallet::where('user_id',$u->id)->first();$this->assertSame(1000000,$wallet->balance_cents);$this->assertSame(0,$wallet->held_cents);$this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',2);
  }

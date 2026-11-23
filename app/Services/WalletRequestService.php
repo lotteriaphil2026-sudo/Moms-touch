@@ -15,6 +15,9 @@ class WalletRequestService
             throw ValidationException::withMessages(['payment_method' => 'Choose a supported bank.']);
         }
         $cents = PortalMoney::cents($amount);
+        if ($type === 'deposit' && $cents < 500000) {
+            throw ValidationException::withMessages(['amount' => 'The minimum add-funds amount is ₱5,000.']);
+        }
         $note = trim($note ?? '');
         $fingerprint = hash('sha256', $type.'|'.$cents.'|'.$note.($paymentMethod === null ? '' : '|'.$paymentMethod));
         app(InterestAccrualService::class)->accrue($user);
