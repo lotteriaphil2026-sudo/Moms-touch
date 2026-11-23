@@ -231,3 +231,27 @@
 .middle-grid.investments-only{grid-template-columns:1fr}
 .franchise-promo{background-color:#f2f0e9;background-image:linear-gradient(90deg,rgba(242,240,233,.98) 0%,rgba(242,240,233,.9) 54%,rgba(242,240,233,.24) 100%),url('/Franchise.png');background-position:center;background-size:cover}
 .franchise-promo:after{display:none}
+.feature-banner.feature-peach{background:#f6ded1}
+.feature-banner.feature-brown{background:#48382a}
+.feature-banner.feature-sage{background:#e1e8db}
+.feature-banner.feature-brown .banner-copy .eyebrow{color:#e5bd7b}
+.feature-banner.feature-brown .banner-copy h2{color:#fff3d8}
+.feature-banner.feature-brown .banner-copy p{color:#e3d5c1}
+.feature-banner.feature-brown .banner-copy .btn-dark{background:#fff3d8;color:#48382a}
+.feature-carousel-controls{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:12px;position:relative;z-index:3}
+.feature-carousel-controls button{display:inline-flex;align-items:center;justify-content:center;min-height:24px;padding:4px 7px;border:1px solid #6b522d5c;border-radius:20px;background:#ffffffa8;color:#3b2c18;font-size:8px;line-height:1;cursor:pointer}
+.feature-carousel-controls .carousel-icon{width:24px;padding:5px}
+.feature-carousel-controls svg{width:12px;height:12px}
+.feature-carousel-controls span{min-width:34px;text-align:center;color:#74531f;font-size:8px}
+.feature-banner.feature-brown .feature-carousel-controls button{border-color:#fff3d880;background:#ffffff20;color:#fff3d8}
+.feature-banner.feature-brown .feature-carousel-controls span{color:#fff3d8}
+.banner-art.article-slide:before,.banner-art.article-slide:after,.banner-art.article-slide .round-stamp{display:none}
+.banner-art.article-slide img{height:auto;max-height:88%;width:100%;max-width:100%;left:0;top:50%;bottom:auto;transform:translateY(-50%);filter:none;object-fit:contain}
+.portal-loader{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;overflow:hidden;background:#302b24;opacity:1;transition:opacity .18s ease}
+.portal-loader[hidden]{display:none}
+.portal-loader.is-hiding{opacity:0;pointer-events:none}
+.portal-loader video{width:100%;height:100%;object-fit:cover}
+.portal-loader-fallback{display:none;position:absolute;color:#f4ad19;font-family:var(--heading);font-size:clamp(32px,8vw,64px);font-weight:800}
+.portal-loader.video-fallback video{display:none}
+.portal-loader.video-fallback .portal-loader-fallback{display:block}
+@media(prefers-reduced-motion:reduce){.portal-loader{transition:none}}
