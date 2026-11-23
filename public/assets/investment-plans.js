@@ -14,7 +14,7 @@ function freshInvestment(plan,amount,id,at=Date.now()){
 }
 function emptyPortalState(){return {
   user:null,wallet:{balance:0,held:0,invested:0,earnings:0,daily_earnings:0},
-  investments:[],transactions:[],wallet_requests:[],franchise_applications:[],
+  investments:[],transactions:[],wallet_requests:[],withdrawal_accounts:[],franchise_applications:[],
 };}
 function planInvestmentPage(){return heading('YOUR NEXT CHAPTER, WITH CARE','A plan for your personal touch.','Choose your starting point. See every rate and term clearly.',`<button class="btn btn-primary" data-action="invest">${I('plus')}New investment</button>`)+`
 <div class="rate-note">${I('shield')}<div><strong>Clear numbers. A simple calculation.</strong>Daily interest is calculated on your original invested amount, without compounding. Review your plan’s terms before allocating funds.</div></div>

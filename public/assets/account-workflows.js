@@ -12,7 +12,7 @@ function authEntryOptions(forgot){
  return forgot?'':'<p class="auth-access-note">Members and administrators use this same secure sign-in form.</p>';
 }
 function finishPortalRender(page){
- state.wallet.held??=0;state.wallet_requests??=[];
+ state.wallet.held??=0;state.wallet_requests??=[];state.withdrawal_accounts??=[];
  if(!native||!window.PORTAL_CONFIG?.financial_operations_enabled){document.querySelectorAll('[data-action="deposit"],[data-action="withdraw"],[data-action="invest"]').forEach(button=>{button.disabled=true;button.title='Wallet operations are temporarily paused.';});}
  if(page==='register'){
   const referralCode=new URLSearchParams(location.search).get('ref');

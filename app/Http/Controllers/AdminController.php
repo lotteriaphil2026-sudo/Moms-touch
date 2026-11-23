@@ -35,8 +35,14 @@ class AdminController extends Controller
     }
     public function user(User $user, PortalController $portal): JsonResponse
     {
+        $payload = $portal->payloadForUser($user);
+        $payload['wallet_requests'] = WalletRequest::where('user_id', $user->id)
+            ->latest('id')
+            ->get()
+            ->map(fn (WalletRequest $walletRequest) => $walletRequest->adminData());
+
         return response()->json([
-            ...$portal->payloadForUser($user),
+            ...$payload,
             'sign_in_history' => MemberSignIn::where('user_id', $user->id)
                 ->latest('created_at')
                 ->limit(20)
@@ -90,6 +96,6 @@ class AdminController extends Controller
     }
     private function requestData(WalletRequest $r): array
     {
-        return [...$r->publicData(), 'user' => $r->user?->only(['id', 'name', 'email'])];
+        return [...$r->adminData(), 'user' => $r->user?->only(['id', 'name', 'email'])];
     }
 }

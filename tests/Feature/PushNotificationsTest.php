@@ -7,6 +7,7 @@ use App\Models\InvestmentAllocation;
 use App\Models\PushSubscription;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WithdrawalAccount;
 use App\Services\InterestAccrualService;
 use App\Services\WalletRequestService;
 use App\Services\WalletService;
@@ -92,12 +93,19 @@ class PushNotificationsTest extends TestCase
         app(InterestAccrualService::class)->accrue($member, $investment->started_at->addDay());
 
         $requests = app(WalletRequestService::class);
-        $deposit = $requests->submit($member, 'deposit', '100', (string) Str::uuid(), null, 'bpi');
+        $deposit = $requests->submit($member, 'deposit', '5000', (string) Str::uuid(), null, 'bpi');
         $admin = User::factory()->create(['is_admin' => true]);
         Wallet::create(['user_id' => $admin->id]);
         $requests->review($admin, $deposit, 'approve', 'Approved');
 
-        $withdrawal = $requests->submit($member, 'withdraw', '100', (string) Str::uuid());
+        $account = WithdrawalAccount::create([
+            'user_id' => $member->id,
+            'type' => 'bank',
+            'provider' => 'BPI',
+            'account_holder' => $member->name,
+            'account_number' => '1234567890',
+        ]);
+        $withdrawal = $requests->submit($member, 'withdraw', '100', (string) Str::uuid(), null, null, $account);
         $requests->review($admin, $withdrawal, 'reject', 'Declined');
 
         Queue::assertPushed(SendWebPushNotification::class, 6);

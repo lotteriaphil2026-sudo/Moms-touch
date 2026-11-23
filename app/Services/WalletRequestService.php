@@ -1,13 +1,14 @@
 <?php
 namespace App\Services;
 use App\Models\{AdminAction, User, Wallet, WalletRequest, WalletTransaction};
+use App\Models\WithdrawalAccount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class WalletRequestService
 {
-    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null, ?string $paymentMethod = null): WalletRequest
+    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null, ?string $paymentMethod = null, ?WithdrawalAccount $withdrawalAccount = null): WalletRequest
     {
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
         abort_unless(in_array($type, ['deposit', 'withdraw'], true), 422, 'Invalid request type.');
@@ -18,10 +19,17 @@ class WalletRequestService
         if ($type === 'deposit' && $cents < 500000) {
             throw ValidationException::withMessages(['amount' => 'The minimum add-funds amount is ₱5,000.']);
         }
+        if ($type === 'withdraw' && (!$withdrawalAccount || (int) $withdrawalAccount->user_id !== $user->id)) {
+            throw ValidationException::withMessages(['withdrawal_account_id' => 'Choose a saved withdrawal account.']);
+        }
         $note = trim($note ?? '');
-        $fingerprint = hash('sha256', $type.'|'.$cents.'|'.$note.($paymentMethod === null ? '' : '|'.$paymentMethod));
+        $fingerprintData = $type.'|'.$cents.'|'.$note.($paymentMethod === null ? '' : '|'.$paymentMethod);
+        if ($withdrawalAccount) {
+            $fingerprintData .= '|'.$withdrawalAccount->id;
+        }
+        $fingerprint = hash('sha256', $fingerprintData);
         app(InterestAccrualService::class)->accrue($user);
-        [$request, $created] = DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod) {
+        [$request, $created] = DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod, $withdrawalAccount) {
             $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $existing = WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->first();
             if ($existing) {
@@ -45,6 +53,11 @@ class WalletRequestService
                 'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'type' => $type,
                 'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending',
                 'payment_method' => $paymentMethod,
+                'withdrawal_account_id' => $withdrawalAccount?->id,
+                'withdrawal_account_type' => $withdrawalAccount?->type,
+                'withdrawal_account_provider' => $withdrawalAccount?->provider,
+                'withdrawal_account_holder' => $withdrawalAccount?->account_holder,
+                'withdrawal_account_number' => $withdrawalAccount?->account_number,
                 'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]), true];
         }, 3);
 

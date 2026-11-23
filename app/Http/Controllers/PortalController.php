@@ -1,6 +1,6 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction};
+use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use App\Services\{InterestAccrualService, WalletRequestService, WalletService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Validation\Rule;
@@ -10,7 +10,7 @@ class PortalController extends Controller
     {
         $user = $request->user();
         if (!$user) {
-            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'daily_earnings' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'franchise_applications' => []]);
+            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'daily_earnings' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'withdrawal_accounts' => [], 'franchise_applications' => []]);
         }
         return response()->json($this->payloadForUser($user));
     }
@@ -35,6 +35,7 @@ class PortalController extends Controller
             ],
             'wallet' => ['balance' => $wallet->balance_cents, 'held' => $wallet->held_cents, 'invested' => $wallet->invested_cents, 'earnings' => $wallet->earnings_cents, 'daily_earnings' => $dailyEarnings],
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
+            'withdrawal_accounts' => WithdrawalAccount::where('user_id', $user->id)->latest('id')->get()->map(fn ($account) => $account->publicData()),
             'investments' => InvestmentAllocation::where('user_id', $user->id)->latest('id')->get()->map(fn ($i) => [
                 'id' => 'MT-'.strtoupper(substr($i->reference, 0, 8)), 'plan' => $i->plan,
                 'name' => $i->plan_name ?? ucfirst($i->plan).' (legacy)', 'amount' => $i->amount_cents,
@@ -62,6 +63,7 @@ class PortalController extends Controller
             'amount' => ['required', 'string', 'max:12', 'regex:/^\d{1,7}(\.\d{1,2})?$/'],
             'plan' => ['nullable', 'required_if:type,invest', Rule::in(array_keys(config('portal.plans')))],
             'payment_method' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(['landbank', 'bpi', 'security_bank'])],
+            'withdrawal_account_id' => ['nullable', 'required_if:type,withdraw', 'prohibited_unless:type,withdraw', 'integer', 'min:1'],
             'request_id' => ['required', 'uuid'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
@@ -74,7 +76,11 @@ class PortalController extends Controller
                 'submitted_request' => $depositRequest->publicData(),
             ]);
         } else {
-            $requests->submit($request->user(), $input['type'], $input['amount'], $input['request_id'], $input['note'] ?? null);
+            $withdrawalAccount = WithdrawalAccount::where('user_id', $request->user()->id)->find($input['withdrawal_account_id']);
+            if (!$withdrawalAccount) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['withdrawal_account_id' => 'Choose one of your saved withdrawal accounts.']);
+            }
+            $requests->submit($request->user(), $input['type'], $input['amount'], $input['request_id'], $input['note'] ?? null, null, $withdrawalAccount);
         }
         return $this->state($request);
     }

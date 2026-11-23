@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, PortalController, PushSubscriptionController};
+use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, PortalController, PushSubscriptionController, WithdrawalAccountController};
 use App\Http\Middleware\EnsureAdministrator;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +18,8 @@ Route::prefix('portal')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [PortalController::class, 'profile'])->middleware('throttle:20,1');
+        Route::post('/withdrawal-accounts', [WithdrawalAccountController::class, 'store'])->middleware('throttle:10,1');
+        Route::delete('/withdrawal-accounts/{withdrawalAccount}', [WithdrawalAccountController::class, 'destroy'])->middleware('throttle:10,1');
         Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->middleware('throttle:10,1');
         Route::delete('/push/subscriptions', [PushSubscriptionController::class, 'destroy'])->middleware('throttle:10,1');
         Route::post('/franchise-applications', [FranchiseApplicationController::class, 'store'])->middleware('throttle:5,1');

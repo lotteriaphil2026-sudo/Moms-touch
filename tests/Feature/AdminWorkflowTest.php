@@ -1,6 +1,6 @@
 <?php
 namespace Tests\Feature;
-use App\Models\{User, Wallet, WalletRequest, InvestmentAllocation};
+use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -14,7 +14,7 @@ class AdminWorkflowTest extends TestCase
   $u=User::factory()->create();$u->forceFill(['is_admin'=>$admin])->save();Wallet::create(['user_id'=>$u->id]);
   if($funds!=='0')app(WalletService::class)->transact($u,'deposit',$funds,null,(string)Str::uuid());return $u;
  }
- private function walletRequest(User $u,string $type,string $amount,?string $id=null): WalletRequest {return app(WalletRequestService::class)->submit($u,$type,$amount,$id??(string)Str::uuid(),'Member request');}
+ private function walletRequest(User $u,string $type,string $amount,?string $id=null): WalletRequest {$account=$type==='withdraw'?WithdrawalAccount::create(['user_id'=>$u->id,'type'=>'bank','provider'=>'BPI','account_holder'=>$u->name,'account_number'=>'1234567890']):null;return app(WalletRequestService::class)->submit($u,$type,$amount,$id??(string)Str::uuid(),'Member request',null,$account);}
  private function review(WalletRequest $r,string $decision='approve'){return $this->postJson('/portal/admin/requests/'.$r->id.'/review',['decision'=>$decision,'note'=>'Reviewed and checked']);}
  private function send(User $u,string $kind,array $data=[]){return $this->postJson('/portal/admin/users/'.$u->id.'/'.$kind,[...['amount'=>'5000.25','note'=>'Member credit','request_id'=>(string)Str::uuid()],...$data]);}
  public function test_guests_and_members_cannot_use_any_admin_endpoint(): void {
@@ -51,9 +51,9 @@ class AdminWorkflowTest extends TestCase
   $this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet_requests.0.review_note','Reviewed and checked');
  }
  public function test_withdrawal_reservation_prevents_spending_the_same_balance_twice(): void {
-  $u=$this->member(false,'10000');$this->actingAs($u);
-  $this->postJson('/portal/transactions',['type'=>'withdraw','amount'=>'6000','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('wallet.balance',400000)->assertJsonPath('wallet.held',600000);
-  $this->postJson('/portal/transactions',['type'=>'withdraw','amount'=>'4000.01','request_id'=>(string)Str::uuid()])->assertUnprocessable();
+  $u=$this->member(false,'10000');$account=WithdrawalAccount::create(['user_id'=>$u->id,'type'=>'bank','provider'=>'BPI','account_holder'=>$u->name,'account_number'=>'1234567890']);$this->actingAs($u);
+  $this->postJson('/portal/transactions',['type'=>'withdraw','amount'=>'6000','withdrawal_account_id'=>$account->id,'request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('wallet.balance',400000)->assertJsonPath('wallet.held',600000);
+  $this->postJson('/portal/transactions',['type'=>'withdraw','amount'=>'4000.01','withdrawal_account_id'=>$account->id,'request_id'=>(string)Str::uuid()])->assertUnprocessable();
   $this->postJson('/portal/transactions',['type'=>'invest','amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid()])->assertUnprocessable();$this->assertDatabaseCount('wallet_requests',1);$this->assertDatabaseCount('investment_allocations',0);
  }
  public function test_withdrawal_approval_releases_hold_without_another_debit(): void {

@@ -1,6 +1,6 @@
 <?php
 namespace Tests\Feature;
-use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction};
+use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\{Hash, Notification};
 use Illuminate\Support\Str;
@@ -27,6 +27,16 @@ class PortalTest extends TestCase
             'request_id' => $requestId,
         ];
         if ($type === 'deposit') { $payload['payment_method'] = 'bpi'; }
+        if ($type === 'withdraw' && auth()->check()) {
+            $account = WithdrawalAccount::create([
+                'user_id' => auth()->id(),
+                'type' => 'bank',
+                'provider' => 'BPI',
+                'account_holder' => auth()->user()->name,
+                'account_number' => '1234567890',
+            ]);
+            $payload['withdrawal_account_id'] = $account->id;
+        }
         $response = $this->postJson('/portal/transactions', $payload);
         // Ledger verification includes admin approval; separate tests verify pending states and permissions.
         if ($response->status() === 200 && in_array($type, ['deposit', 'withdraw'], true)) {
@@ -150,20 +160,20 @@ class PortalTest extends TestCase
     public function test_money_is_stored_in_exact_centavos(): void
     {
         $this->actingAs($this->member());
-        $this->approvedTransaction('deposit', '1000.25')->assertOk()->assertJsonPath('wallet.balance', 100025);
-        $this->approvedTransaction('deposit', '100.10')->assertOk()->assertJsonPath('wallet.balance', 110035);
-        $this->approvedTransaction('withdraw', '100.30')->assertOk()->assertJsonPath('wallet.balance', 100005);
-        $this->assertDatabaseHas('wallet_transactions', ['amount_cents' => 10030, 'balance_after_cents' => 100005]);
+        $this->approvedTransaction('deposit', '5000.25')->assertOk()->assertJsonPath('wallet.balance', 500025);
+        $this->approvedTransaction('deposit', '5000.10')->assertOk()->assertJsonPath('wallet.balance', 1000035);
+        $this->approvedTransaction('withdraw', '100.30')->assertOk()->assertJsonPath('wallet.balance', 990005);
+        $this->assertDatabaseHas('wallet_transactions', ['amount_cents' => 10030, 'balance_after_cents' => 990005]);
     }
     public function test_overspending_fails_without_changing_wallet_or_ledger(): void
     {
         $this->actingAs($this->member());
-        $this->approvedTransaction('deposit', '1000')->assertOk();
-        $this->approvedTransaction('withdraw', '1001')->assertUnprocessable();
-        $this->approvedTransaction('invest', '5000', 'prime')->assertUnprocessable();
+        $this->approvedTransaction('deposit', '5000')->assertOk();
+        $this->approvedTransaction('withdraw', '5000.01')->assertUnprocessable();
+        $this->approvedTransaction('invest', '5000.01', 'prime')->assertUnprocessable();
         $this->assertDatabaseCount('wallet_transactions', 1);
         $this->assertDatabaseCount('investment_allocations', 0);
-        $this->assertSame(100000, Wallet::first()->balance_cents);
+        $this->assertSame(500000, Wallet::first()->balance_cents);
     }
     public function test_plan_minimum_and_amount_validation_are_enforced_on_server(): void
     {
@@ -238,8 +248,8 @@ class PortalTest extends TestCase
         $after = $login->json('csrf');
         $this->assertNotSame($before, $after);
         $this->withHeader('X-CSRF-TOKEN', $after);
-        $this->approvedTransaction('deposit', '500')->assertOk();
+        $this->approvedTransaction('deposit', '5000')->assertOk();
         $this->withHeader('X-CSRF-TOKEN', $before);
-        $this->approvedTransaction('deposit', '500')->assertStatus(419);
+        $this->approvedTransaction('deposit', '5000')->assertStatus(419);
     }
 }
