@@ -1,9 +1,10 @@
 <?php
 namespace Tests\Feature;
-use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WithdrawalAccount};
+use App\Jobs\SendWebPushNotification;
+use App\Models\{InvestmentAllocation, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\{Hash, Queue};
 use Illuminate\Support\Str;
 use Tests\TestCase;
 class AdminWorkflowTest extends TestCase
@@ -19,7 +20,7 @@ class AdminWorkflowTest extends TestCase
  private function send(User $u,string $kind,array $data=[]){return $this->postJson('/portal/admin/users/'.$u->id.'/'.$kind,[...['amount'=>'5000.25','note'=>'Member credit','request_id'=>(string)Str::uuid()],...$data]);}
  public function test_guests_and_members_cannot_use_any_admin_endpoint(): void {
   $u=$this->member();$r=$this->walletRequest($u,'deposit','5000');
-  $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/requests','/portal/admin/audit'];
+  $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
@@ -50,6 +51,21 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseHas('wallet_requests',['id'=>$r->id,'reviewed_by'=>$admin->id,'status'=>'approved']);
   $this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet_requests.0.review_note','Reviewed and checked');
  }
+ public function test_admin_deposit_queue_groups_members_and_member_endpoint_contains_all_deposit_requests(): void {
+  $u=$this->member();$admin=$this->member(true);$first=$this->walletRequest($u,'deposit','5000');$second=$this->walletRequest($u,'deposit','7000');$other=$this->member();$this->walletRequest($other,'deposit','5000');
+  $this->actingAs($admin);
+  $pending=$this->getJson('/portal/admin/deposit-users')->assertOk()->json('items');
+  $group=collect($pending)->firstWhere('user.id',$u->id);
+  $this->assertNotNull($group);$this->assertSame(2,$group['request_count']);$this->assertSame(1200000,$group['total_amount']);
+  $this->review($first)->assertOk();
+  $pending=$this->getJson('/portal/admin/deposit-users')->assertOk()->json('items');
+  $group=collect($pending)->firstWhere('user.id',$u->id);
+  $this->assertNotNull($group);$this->assertSame(1,$group['request_count']);
+  $this->getJson('/portal/admin/users/'.$u->id)->assertOk()->assertJsonCount(2,'wallet_requests');
+  $all=$this->getJson('/portal/admin/deposit-users?status=all')->assertOk()->json('items');
+  $group=collect($all)->firstWhere('user.id',$u->id);
+  $this->assertNotNull($group);$this->assertSame(2,$group['request_count']);
+ }
  public function test_withdrawal_reservation_prevents_spending_the_same_balance_twice(): void {
   $u=$this->member(false,'10000');$account=WithdrawalAccount::create(['user_id'=>$u->id,'type'=>'bank','provider'=>'BPI','account_holder'=>$u->name,'account_number'=>'1234567890']);$this->actingAs($u);
   $this->postJson('/portal/transactions',['type'=>'withdraw','amount'=>'6000','withdrawal_account_id'=>$account->id,'request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('wallet.balance',400000)->assertJsonPath('wallet.held',600000);
@@ -73,10 +89,14 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);$this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$u->id,'action'=>'funds_sent','amount_cents'=>500025]);$this->assertSame(0,Wallet::where('user_id',$other->id)->first()->balance_cents);
  }
  public function test_admin_plan_grant_preserves_cash_snapshots_terms_and_accrues_correctly(): void {
-  $u=$this->member(false,'1000');$admin=$this->member(true);$this->actingAs($admin);$input=['amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid()];
-  $this->send($u,'plans',$input)->assertOk()->assertJsonPath('member.wallet.balance',100000)->assertJsonPath('member.wallet.invested',500000)->assertJsonPath('member.investments.0.term_days',160);
-  $this->send($u,'plans',$input)->assertOk();$this->assertDatabaseCount('investment_allocations',1);$inv=InvestmentAllocation::first();$this->assertSame(60,$inv->rate_basis_points);$this->assertSame('0.006000',$inv->daily_interest_rate);
-  $this->travel(1)->days();$this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings',3000)->assertJsonPath('wallet.balance',103000);$this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'plan_grant','amount_cents'=>500000]);$this->assertDatabaseCount('admin_actions',1);
+  Queue::fake();config(['webpush.vapid.subject'=>'mailto:push@example.test','webpush.vapid.public_key'=>'public','webpush.vapid.private_key'=>'private']);
+  $u=$this->member(false,'1000');$admin=$this->member(true);$endpoint='https://fcm.googleapis.com/fcm/send/assigned-plan';
+  PushSubscription::create(['user_id'=>$u->id,'endpoint_hash'=>hash('sha256',$endpoint),'endpoint'=>$endpoint,'public_key'=>str_repeat('A',87),'auth_token'=>str_repeat('B',22),'content_encoding'=>'aes128gcm']);
+  $this->actingAs($admin);$input=['amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid()];
+  $this->send($u,'plans',$input)->assertOk()->assertJsonPath('member.wallet.balance',100000)->assertJsonPath('member.wallet.invested',500000)->assertJsonPath('member.wallet.daily_earnings',3000)->assertJsonPath('member.investments.0.term_days',160)->assertJsonPath('member.investments.0.status','active')->assertJsonPath('member.transactions.0.type','plan_grant');
+  Queue::assertPushed(SendWebPushNotification::class,fn (SendWebPushNotification $job)=>$job->userId===$u->id&&$job->url==='/#/investments'&&$job->title==='An investment plan was gifted to you'&&str_contains($job->message,'Mom’s Select')&&str_contains($job->message,'daily interest'));
+  $this->send($u,'plans',$input)->assertOk();Queue::assertPushed(SendWebPushNotification::class,1);$this->assertDatabaseCount('investment_allocations',1);$inv=InvestmentAllocation::first();$this->assertSame(60,$inv->rate_basis_points);$this->assertSame('0.006000',$inv->daily_interest_rate);
+  $this->travel(1)->days();$this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings',3000)->assertJsonPath('wallet.balance',103000)->assertJsonPath('transactions.0.type','interest')->assertJsonPath('transactions.1.type','plan_grant');$this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'plan_grant','amount_cents'=>500000]);$this->assertDatabaseCount('admin_actions',1);
  }
  public function test_admin_amount_minimum_plan_and_reason_validation(): void {
   $u=$this->member();$this->actingAs($this->member(true));

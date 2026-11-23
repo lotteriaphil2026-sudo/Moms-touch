@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 use App\Models\{AdminAction, MemberSignIn, User, Wallet, WalletRequest};
 use App\Services\{WalletAdministrationService, WalletRequestService};
 use Illuminate\Http\{JsonResponse, Request};
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -59,6 +60,47 @@ class AdminController extends Controller
         $page = $query->latest('id')->paginate(25);
         return response()->json(['items' => $page->getCollection()->map(fn ($r) => $this->requestData($r)),
             'page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()]);
+    }
+    public function depositUsers(Request $request): JsonResponse
+    {
+        $input = $request->validate([
+            'status' => ['nullable', Rule::in(['pending', 'approved', 'rejected', 'all'])],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $query = WalletRequest::query()->where('type', 'deposit');
+        if (($input['status'] ?? 'pending') !== 'all') {
+            $query->where('status', $input['status'] ?? 'pending');
+        }
+        $page = $query
+            ->select('user_id')
+            ->selectRaw('COUNT(*) as request_count, SUM(amount_cents) as total_amount, MAX(created_at) as latest_at')
+            ->groupBy('user_id')
+            ->orderByDesc('latest_at')
+            ->orderByDesc('user_id')
+            ->paginate(25);
+        $users = User::query()
+            ->whereIn('id', $page->getCollection()->pluck('user_id'))
+            ->get(['id', 'name', 'email'])
+            ->keyBy('id');
+
+        return response()->json([
+            'items' => $page->getCollection()->map(function ($group) use ($users) {
+                $user = $users->get($group->user_id);
+                if (! $user) {
+                    return null;
+                }
+
+                return [
+                    'user' => $user->only(['id', 'name', 'email']),
+                    'request_count' => (int) $group->request_count,
+                    'total_amount' => (int) $group->total_amount,
+                    'latest_at' => Carbon::parse($group->latest_at)->toIso8601String(),
+                ];
+            })->filter()->values(),
+            'page' => $page->currentPage(),
+            'last_page' => $page->lastPage(),
+            'total' => $page->total(),
+        ]);
     }
     public function review(Request $request, WalletRequest $walletRequest, WalletRequestService $requests): JsonResponse
     {

@@ -58,9 +58,14 @@ class WalletAdministrationService
 
         if ($created) {
             $message = $details
-                ? 'An investment plan was added to your account. Sign in to view the details.'
+                ? $details['name'].' was gifted to your account and is now active. Open Investments to view the plan and its daily interest.'
                 : 'Funds were credited to your wallet.';
-            app(WebPushNotificationService::class)->notify($member->id, $message);
+            app(WebPushNotificationService::class)->notify(
+                $member->id,
+                $message,
+                $details ? '/#/investments' : '/#/wallet',
+                $details ? 'An investment plan was gifted to you' : 'Mom’s Touch account update'
+            );
         }
     }
 }

@@ -28,6 +28,7 @@ Route::prefix('portal')->group(function () {
             Route::get('/overview', [AdminController::class, 'overview']);
             Route::get('/users', [AdminController::class, 'users']);
             Route::get('/users/{user}', [AdminController::class, 'user']);
+            Route::get('/deposit-users', [AdminController::class, 'depositUsers']);
             Route::get('/requests', [AdminController::class, 'requests']);
             Route::post('/requests/{walletRequest}/review', [AdminController::class, 'review']);
             Route::post('/users/{user}/funds', [AdminController::class, 'funds']);
