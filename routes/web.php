@@ -2,10 +2,18 @@
 use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, PortalController, PushSubscriptionController, WithdrawalAccountController};
 use App\Http\Middleware\EnsureAdministrator;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 Route::view('/', 'portal')->name('home');
 Route::get('/login', fn () => redirect('/#/login'))->name('login');
-Route::get('/register', fn () => redirect('/#/register'))->name('register');
+Route::get('/register', function (\Illuminate\Http\Request $request) {
+    $referralCode = trim((string) $request->query('ref'));
+    $destination = '/#/register';
+    if ($referralCode !== '') {
+        $destination .= '?ref='.rawurlencode(Str::upper($referralCode));
+    }
+    return redirect($destination);
+})->name('register');
 Route::get('/forgot-password', fn () => redirect('/#/forgot'))->name('password.request');
 Route::get('/reset-password/{token}', fn (string $token) => view('reset-password', ['token' => $token]))->middleware('guest')->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'reset'])->middleware(['guest', 'throttle:6,1'])->name('password.update');

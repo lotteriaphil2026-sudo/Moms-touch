@@ -31,23 +31,13 @@ class ReferralSystemTest extends TestCase
         ], $overrides);
     }
 
-    public function test_unlinked_signup_receives_a_platform_referrer_and_unique_share_link(): void
+    public function test_referral_code_is_required_for_registration(): void
     {
-        $response = $this->postJson('/portal/register', $this->registrationPayload());
+        $this->postJson('/portal/register', $this->registrationPayload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('referral_code');
 
-        $response->assertOk()
-            ->assertJsonPath('user.referrer.type', 'platform')
-            ->assertJsonPath('user.referrer.name', 'Mom’s Touch Platform')
-            ->assertJsonPath('user.referrals_count', 0);
-
-        $code = $response->json('user.referral_code');
-        $this->assertMatchesRegularExpression('/\A[A-Z0-9]{12}\z/', $code);
-        $this->assertDatabaseHas('users', [
-            'id' => $response->json('user.id'),
-            'referral_code' => $code,
-            'referrer_id' => null,
-            'referrer_type' => 'platform',
-        ]);
+        $this->assertDatabaseCount('users', 0);
     }
 
     public function test_signup_link_attributes_the_new_member_to_the_referring_member(): void
@@ -81,5 +71,18 @@ class ReferralSystemTest extends TestCase
         ]))->assertUnprocessable()->assertJsonValidationErrors('referral_code');
 
         $this->assertDatabaseCount('users', 0);
+    }
+
+    public function test_new_member_receives_a_name_based_referral_code(): void
+    {
+        $referrer = User::factory()->create(['name' => 'Referring Member']);
+        Wallet::create(['user_id' => $referrer->id]);
+
+        $response = $this->postJson('/portal/register', $this->registrationPayload([
+            'name' => 'Maria Santos',
+            'referral_code' => $referrer->referral_code,
+        ]))->assertOk();
+
+        $this->assertSame('MARIA-SANTOS', $response->json('user.referral_code'));
     }
 }

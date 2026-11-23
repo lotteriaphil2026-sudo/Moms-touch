@@ -63,17 +63,35 @@ class User extends Authenticatable
     {
         static::creating(function (User $user): void {
             if (!$user->referral_code) {
-                do {
-                    $code = Str::upper(Str::random(12));
-                } while (static::where('referral_code', $code)->exists());
-
-                $user->referral_code = $code;
+                $user->referral_code = static::generateReferralCode($user->name);
             }
         });
 
         static::saving(function (User $user): void {
+            if ($user->exists && $user->isDirty('name') && $user->name) {
+                $user->referral_code = static::generateReferralCode($user->name, $user->id);
+            }
             $user->referrer_type = $user->referrer_id ? 'member' : 'platform';
         });
+    }
+
+    public static function generateReferralCode(string $name, ?int $excludeUserId = null): string
+    {
+        $base = preg_replace('/[^A-Z0-9]+/', '-', Str::upper(Str::ascii(trim($name))));
+        $base = trim((string) $base, '-');
+        $base = $base !== '' ? substr($base, 0, 74) : 'MEMBER';
+
+        $code = $base;
+        $suffix = 2;
+        while (static::query()
+            ->where('referral_code', $code)
+            ->when($excludeUserId, fn ($query) => $query->whereKeyNot($excludeUserId))
+            ->exists()) {
+            $tail = '-'.$suffix++;
+            $code = substr($base, 0, 80 - strlen($tail)).$tail;
+        }
+
+        return $code;
     }
 
     public function referrer(): BelongsTo
