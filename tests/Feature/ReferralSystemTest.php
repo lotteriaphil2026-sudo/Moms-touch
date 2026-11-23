@@ -81,7 +81,7 @@ class ReferralSystemTest extends TestCase
         $this->actingAs($member)
             ->patchJson('/portal/profile', [
                 'name' => 'Editing Member',
-                'referral_code' => 'MY-CUSTOM-CODE',
+                'referral_code' => 'My Custom Code',
             ])
             ->assertOk()
             ->assertJsonPath('user.referral_code', 'MY-CUSTOM-CODE');

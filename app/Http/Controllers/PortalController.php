@@ -100,6 +100,10 @@ class PortalController extends Controller
     }
     public function profile(Request $request): JsonResponse
     {
+        $submittedReferralCode = trim((string) $request->input('referral_code'));
+        $normalizedReferralCode = strtoupper(preg_replace('/[\s-]+/', '-', $submittedReferralCode));
+        $request->merge(['referral_code' => $normalizedReferralCode]);
+
         $input = $request->validate([
             'name' => ['required', 'string', 'max:80'],
             'referral_code' => [

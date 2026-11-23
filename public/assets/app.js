@@ -194,7 +194,7 @@ if(action==='privacy'||action==='terms'){
  return;
 }
 });
-document.addEventListener('input',e=>{if(e.target.id==='portal-search')searchResults(e.target.value);if(e.target.id==='profile-referral-code'){e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,'');const link=$('#referral-link');if(link&&e.target.value)link.value=referralUrl(e.target.value);else if(link)link.value='';}});
+document.addEventListener('input',e=>{if(e.target.id==='portal-search')searchResults(e.target.value);if(e.target.id==='profile-referral-code'){e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9 -]/g,'');const link=$('#referral-link');if(link&&e.target.value.trim()){const preview=e.target.value.trim().replace(/[\s-]+/g,'-');link.value=referralUrl(preview);}else if(link)link.value='';}});
 document.addEventListener('submit',async e=>{const form=e.target;if(!['auth-form','money-form','profile-form','referral-code-form','franchise-form','withdrawal-account-form'].includes(form.id))return;e.preventDefault();if(isLoading)return;const data=Object.fromEntries(new FormData(form));const submit=form.querySelector('[type=submit]');isLoading=true;submit.disabled=true;try{
 if(form.id==='franchise-form'){await submitFranchiseApplication(form,data);}
 if(form.id==='withdrawal-account-form'){const response=await api('withdrawal-accounts','POST',data);state.withdrawal_accounts=response.withdrawal_accounts;render();toast('Withdrawal account saved.');}
