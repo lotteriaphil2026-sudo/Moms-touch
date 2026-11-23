@@ -86,11 +86,12 @@ class AdminWorkflowTest extends TestCase
   $u=$this->member();$other=$this->member();$admin=$this->member(true);$endpoint='https://fcm.googleapis.com/fcm/send/admin-funds';
   PushSubscription::create(['user_id'=>$u->id,'endpoint_hash'=>hash('sha256',$endpoint),'endpoint'=>$endpoint,'public_key'=>str_repeat('A',87),'auth_token'=>str_repeat('B',22),'content_encoding'=>'aes128gcm']);
   $this->actingAs($admin);$id=(string)Str::uuid();
-  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('notification_queued',true)->assertJsonPath('member.wallet.balance',500025);
+  $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('notification_queued',true)->assertJsonPath('member.wallet.balance',500025)->assertJsonPath('member.transactions.0.type','deposit')->assertJsonPath('member.transactions.0.description','Funds sent by admin');
   Queue::assertPushed(SendWebPushNotification::class,fn (SendWebPushNotification $job)=>$job->userId===$u->id&&$job->url==='/#/wallet'&&str_contains($job->message,'Funds were credited'));
   $this->send($u,'funds',['request_id'=>$id])->assertOk()->assertJsonPath('notification_queued',null)->assertJsonPath('member.wallet.balance',500025);
   Queue::assertPushed(SendWebPushNotification::class,1);
   $this->send($u,'funds',['request_id'=>$id,'amount'=>'6000'])->assertUnprocessable();$this->send($other,'funds',['request_id'=>$id])->assertUnprocessable();
+  $this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('transactions.0.type','deposit')->assertJsonPath('transactions.0.description','Funds sent by admin');
   $this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);$this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$u->id,'action'=>'funds_sent','amount_cents'=>500025]);$this->assertSame(0,Wallet::where('user_id',$other->id)->first()->balance_cents);
  }
  public function test_admin_fund_response_reports_when_recipient_has_no_phone_subscription(): void {
