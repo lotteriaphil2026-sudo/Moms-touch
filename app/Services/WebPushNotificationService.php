@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\SendWebPushNotification;
-use App\Models\{InvestmentAllocation, PushSubscription, User};
+use App\Models\{InvestmentAllocation, PushSubscription, User, WalletRequest, WalletTransaction};
 use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\Subscription;
@@ -83,6 +83,8 @@ class WebPushNotificationService
             'title' => $title,
             'body' => $message,
             'url' => $url,
+            'count' => WalletTransaction::where('user_id', $userId)->count()
+                + WalletRequest::where('user_id', $userId)->count(),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
         $subscriptions = PushSubscription::where('user_id', $userId)->get();
