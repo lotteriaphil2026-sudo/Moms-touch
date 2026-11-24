@@ -168,10 +168,9 @@
 
 .deposit-bank-choice{
   width:100%;
-  min-height:62px;
+  min-height:74px;
   justify-content:flex-start;
-  gap:12px;
-  padding:9px 12px;
+  padding:8px 16px;
   overflow:hidden;
   text-align:left;
 }
@@ -182,27 +181,12 @@
   color:#a99b85;
 }
 .deposit-bank-logo{
-  display:grid;
-  place-items:center;
-  width:48px;
-  height:48px;
-  flex:none;
-  border:1px solid #eee9df;
-  border-radius:9px;
-  background:#fff;
-  overflow:hidden;
-}
-.deposit-bank-logo img{
   display:block;
-  width:100%;
-  height:100%;
+  width:180px;
+  height:58px;
+  flex:none;
   object-fit:contain;
-  padding:4px;
-}
-.deposit-bank-name{
-  font-size:12px;
-  font-weight:700;
-  color:#4f483d;
+  padding:0;
 }
 .tx-copy{
   display:grid;

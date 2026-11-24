@@ -145,7 +145,7 @@ function amountModal(type,planId='select'){
 
 function openDepositBankModal(data){
  pendingDeposit=data;
- openModal(`<h2 id="dialog-title">Choose a bank</h2><p>Select a bank to view its payment QR code.</p><div class="deposit-bank-choices" style="display:grid;gap:10px;margin:20px 0">${Object.entries(depositBankLabels).map(([id,name])=>`<button class="deposit-bank-choice btn btn-outline" type="button" data-action="deposit-bank" data-id="${id}" aria-label="View ${esc(name)} payment QR"><span class="deposit-bank-logo"><img src="${depositBankLogos[id]}" alt="${esc(name)} logo"></span><span class="deposit-bank-name">${esc(name)}</span>${I('arrow')}</button>`).join('')}</div><button class="btn btn-dark" type="button" data-action="close">Cancel</button>`);
+ openModal(`<h2 id="dialog-title">Choose a bank</h2><p>Select a bank to view its payment QR code.</p><div class="deposit-bank-choices" style="display:grid;gap:10px;margin:20px 0">${Object.entries(depositBankLabels).map(([id,name])=>`<button class="deposit-bank-choice btn btn-outline" type="button" data-action="deposit-bank" data-id="${id}" aria-label="View ${esc(name)} payment QR"><img class="deposit-bank-logo" src="${depositBankLogos[id]}" alt="${esc(name)}">${I('arrow')}</button>`).join('')}</div><button class="btn btn-dark" type="button" data-action="close">Cancel</button>`);
 }
 
 async function submitDemoDeposit(bank,button){
