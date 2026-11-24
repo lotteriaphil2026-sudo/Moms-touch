@@ -69,7 +69,7 @@ function accountMarkup(){
 function account(){
  const markup=accountMarkup();
  if(!state.user)return markup;
- const pushPanel=`<section class="profile-panel" id="phone-push-panel" style="margin-top:20px"><h3>Phone notifications</h3><p>Get alerts for interest credits, deposits, withdrawals, and investments. Alerts may appear on your lock screen; you can turn them off here or in your device settings.</p><p id="phone-push-status" class="muted" role="status" aria-live="polite">Checking this device…</p><button id="phone-push-button" class="btn btn-outline" type="button" data-push-action="enable">Enable on this device</button></section>`;
+ const pushPanel=`<section class="profile-panel" id="phone-push-panel" style="margin-top:20px"><h3>Phone notifications</h3><p>Get alerts for interest credits, deposits, withdrawals, and investments. Alerts may appear on your lock screen; you can turn them off here or in your device settings.</p><p>On iPhone or iPad, allow badges for Mom’s Touch in Settings → Notifications to show a number on the Home Screen icon.</p><p id="phone-push-status" class="muted" role="status" aria-live="polite">Checking this device…</p><button id="phone-push-button" class="btn btn-outline" type="button" data-push-action="enable">Enable on this device</button></section>`;
  return markup.replace('<div class="rate-note" style="margin-top:20px">',pushPanel+'<div class="rate-note" style="margin-top:20px">');
 }
 function authPage(page){

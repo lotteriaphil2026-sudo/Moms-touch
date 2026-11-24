@@ -79,12 +79,14 @@ class WebPushNotificationService
             return;
         }
 
+        $badgeCount = WalletTransaction::where('user_id', $userId)->count()
+            + WalletRequest::where('user_id', $userId)->count();
+
         $payload = json_encode([
             'title' => $title,
             'body' => $message,
             'url' => $url,
-            'count' => WalletTransaction::where('user_id', $userId)->count()
-                + WalletRequest::where('user_id', $userId)->count(),
+            'count' => max(1, $badgeCount),
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 
         $subscriptions = PushSubscription::where('user_id', $userId)->get();

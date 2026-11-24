@@ -13,10 +13,14 @@ self.addEventListener('push', event => {
             return;
         }
 
-        if (Number.isSafeInteger(notification.count) && notification.count > 0) {
-            await self.navigator.setAppBadge(notification.count);
-        } else if (typeof self.navigator.clearAppBadge === 'function') {
-            await self.navigator.clearAppBadge();
+        try {
+            if (Number.isSafeInteger(notification.count) && notification.count > 0) {
+                await self.navigator.setAppBadge(notification.count);
+            } else if (typeof self.navigator.clearAppBadge === 'function') {
+                await self.navigator.clearAppBadge();
+            }
+        } catch (error) {
+            console.warn('Home screen badge could not be updated.', error);
         }
     }));
 });
