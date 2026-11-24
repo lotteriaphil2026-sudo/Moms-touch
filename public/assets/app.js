@@ -17,6 +17,7 @@ function seed(){return emptyPortalState();}
 for(const key of ['mt-preview','mt-admin-preview']){try{sessionStorage.removeItem(key);}catch{}}
 let state=seed();
 state.franchise_applications??=[];
+let splashLoginPending=false,splashPortalReady=false,splashVideoEnded=false,splashTransitionStarted=false;
 let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIndex=events.findIndex(event=>event.id===1),featuredEventPaused=false,featuredEventTimer=null;let portalLoaderHideTimer=null,portalLoaderStartedAt=null,portalLoaderMinimumMs=0;let isLoading=false;let modalReturnFocus=null;let currentModal='';let toastTimer;let pendingDeposit=null;let pendingDepositReceipt=null;
 window.PORTAL_BANK_LABELS={landbank:'Landbank',bpi:'BPI',security_bank:'Security Bank'};
 const depositBankLabels=window.PORTAL_BANK_LABELS;
@@ -24,8 +25,58 @@ const depositQrImages={landbank:'/LANDBANK.png',bpi:'/bpi.png',security_bank:'/S
 const depositBankLogos={landbank:'/assets/landbank-logo.svg',bpi:'/assets/bpi-logo.svg',security_bank:'/assets/security-bank-logo.svg'};
 const nav=[['dashboard','grid','Overview'],['wallet','wallet','My wallet'],['investments','trend','Investments'],['events','events','Events & Promotions'],['franchising','store','Franchising'],['menu','burger','Our menu'],['account','user','My account']];
 function route(){let p=location.hash.replace('#/','').split('?')[0];return [...nav.map(n=>n[0]),'login','register','forgot','admin'].includes(p)?p:'login';}
-function showPortalLoader(minimumMs=0){const loader=$('#portal-loader');if(!loader)return;if(loader.hidden||loader.classList.contains('is-hiding')||portalLoaderStartedAt===null)portalLoaderStartedAt=performance.now();portalLoaderMinimumMs=Math.max(portalLoaderMinimumMs,minimumMs);clearTimeout(portalLoaderHideTimer);loader.hidden=false;loader.setAttribute('aria-hidden','false');loader.classList.remove('is-hiding');const video=loader.querySelector('video');const fallback=error=>{loader.classList.add('video-fallback');console.warn('Splash video could not play; showing fallback.',error);};if(!video||typeof video.play!=='function'){fallback(new Error('Video playback is unavailable.'));return;}if(!video.dataset.fallbackBound){video.addEventListener('error',()=>fallback(video.error));video.dataset.fallbackBound='true';}if(video.paused){try{const playback=video.play();if(playback&&typeof playback.then==='function')playback.then(()=>loader.classList.remove('video-fallback')).catch(fallback);}catch(error){fallback(error);}}}
-function hidePortalLoader(){const loader=$('#portal-loader');if(!loader||loader.hidden)return;const remaining=portalLoaderMinimumMs-(performance.now()-(portalLoaderStartedAt??performance.now()));if(remaining>0){clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(hidePortalLoader,remaining);return;}portalLoaderMinimumMs=0;loader.classList.add('is-hiding');loader.setAttribute('aria-hidden','true');clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>{loader.hidden=true;loader.querySelector('video')?.pause();portalLoaderStartedAt=null;},280);}
+function showPortalLoader(minimumMs=0){
+ const loader=$('#portal-loader');if(!loader)return;
+ if(loader.hidden||loader.classList.contains('is-hiding')||portalLoaderStartedAt===null)portalLoaderStartedAt=performance.now();
+ portalLoaderMinimumMs=Math.max(portalLoaderMinimumMs,minimumMs);clearTimeout(portalLoaderHideTimer);loader.hidden=false;loader.setAttribute('aria-hidden','false');loader.classList.remove('is-hiding');
+ const video=loader.querySelector('video');
+ const fallback=error=>{loader.classList.add('video-fallback');console.warn('Splash video could not play; showing fallback.',error);};
+ if(!video||typeof video.play!=='function'){fallback(new Error('Video playback is unavailable.'));return;}
+ video.loop=false;
+ if(!video.dataset.fallbackBound){video.addEventListener('error',()=>fallback(video.error));video.dataset.fallbackBound='true';}
+ if(!video.dataset.endedBound){video.addEventListener('ended',()=>{splashVideoEnded=true;hidePortalLoader();});video.dataset.endedBound='true';}
+ if(video.ended){video.currentTime=0;splashVideoEnded=false;}
+ if(video.paused){try{const playback=video.play();if(playback&&typeof playback.then==='function')playback.then(()=>loader.classList.remove('video-fallback')).catch(fallback);}catch(error){fallback(error);}}
+}
+function startSplashLoginTransition(loader){
+ if(splashTransitionStarted)return;
+ const headerLogo=$('#app .auth-story .brand');
+ if(!headerLogo)return;
+ const logoRect=headerLogo.getBoundingClientRect();
+ const horizontalLogo=loader.querySelector('.portal-loader-brand');
+ horizontalLogo.style.setProperty('--header-logo-left',`${logoRect.left}px`);
+ horizontalLogo.style.setProperty('--header-logo-top',`${logoRect.top}px`);
+ horizontalLogo.style.setProperty('--header-logo-width',`${logoRect.width}px`);
+ horizontalLogo.style.setProperty('--splash-logo-start-width',`${Math.min(window.innerWidth*.62,360)}px`);
+ splashTransitionStarted=true;
+ loader.classList.add('is-transitioning');
+ document.body.classList.add('splash-login-entering');
+ const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+ window.setTimeout(()=>{
+  loader.hidden=true;
+  loader.setAttribute('aria-hidden','true');
+  loader.querySelector('video')?.pause();
+  loader.classList.remove('is-transitioning','video-fallback');
+  document.body.classList.remove('splash-login-preloaded','splash-login-entering');
+  portalLoaderMinimumMs=0;portalLoaderStartedAt=null;splashTransitionStarted=false;
+ },reducedMotion?0:650);
+}
+function hidePortalLoader(page=route()){
+ const loader=$('#portal-loader');if(!loader||loader.hidden||splashTransitionStarted)return;
+ if(splashLoginPending){
+  if(!splashPortalReady)return;
+  if(page==='login'&&document.querySelector('#app .auth-page')){
+   if(!splashVideoEnded&&!loader.classList.contains('video-fallback'))return;
+   const remaining=portalLoaderMinimumMs-(performance.now()-(portalLoaderStartedAt??performance.now()));
+   if(remaining>0){clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>hidePortalLoader(page),remaining);return;}
+   splashLoginPending=false;startSplashLoginTransition(loader);return;
+  }
+  splashLoginPending=false;document.body.classList.remove('splash-login-preloaded');
+ }
+ const remaining=portalLoaderMinimumMs-(performance.now()-(portalLoaderStartedAt??performance.now()));
+ if(remaining>0){clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>hidePortalLoader(page),remaining);return;}
+ portalLoaderMinimumMs=0;loader.classList.add('is-hiding');loader.setAttribute('aria-hidden','true');clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>{loader.hidden=true;loader.querySelector('video')?.pause();portalLoaderStartedAt=null;},280);
+}
 function portalLoaderDuration(page){return ['investments','wallet','events','franchising'].includes(page)?3000:0;}
 function go(p){showPortalLoader(portalLoaderDuration(p));if(route()===p){render();}else location.hash='/'+p;}
 function signed(){if(state.user)return true;go('login');toast('Sign in to manage your account.');return false;}
@@ -126,7 +177,7 @@ function authPage(page){
  const authLinks=native?`<div class="auth-alternate">${register||forgot?`Already a member? <a href="#/login${authDestination()==='franchising'?'?return=franchising':''}">Sign in</a>`:`${window.PORTAL_CONFIG?.registration_enabled?'New around here?':'Registration is currently closed. Existing member?'} <a href="#/${window.PORTAL_CONFIG?.registration_enabled?'register':'login'}${authDestination()==='franchising'?'?return=franchising':''}">${window.PORTAL_CONFIG?.registration_enabled?'Join the club':'Sign in'}</a>`}</div>`:'';
  return `<div class="auth-page"><section class="auth-story"><a href="#/dashboard">${brand()}</a><div class="story-copy"><div class="eyebrow">YOUR EVERYDAY, A LITTLE BETTER</div><h1>Good things.<br>A personal touch.</h1><p>Your favorites, your wallet, and your next chapter. All in one warm, welcoming space.</p></div><div class="auth-food"><img src="/assets/burger.webp" alt="Crispy golden Mom’s Touch chicken burger"></div><div class="story-foot">Made with care. Shared with you.</div></section><section class="auth-form-wrap"><a class="auth-back" href="#/login">${I('back')}Back to sign in</a><div class="auth-content"><div class="eyebrow">MOM’S TOUCH MEMBERS CLUB</div><h2>${forgot?'A fresh start.':register?'Make yourself at home.':'Welcome back.'}</h2><p>${forgot?'We’ll help you get back to your member space.':register?'A little something good, made just for you.':'Your good things are right where you left them.'}</p>${native&&register&&!window.PORTAL_CONFIG?.registration_enabled?'<div class="production-setup-note" role="status"><strong>Registration will open shortly.</strong><p>Please check back soon.</p></div>':authEntryOptions(forgot)}<form id="auth-form" data-kind="${page}"><fieldset class="auth-fields" ${!native||register&&!window.PORTAL_CONFIG?.registration_enabled?'disabled aria-label="This service is temporarily unavailable"':''}>${registrationFields}<div class="field"><label for="auth-email">Email address</label><input id="auth-email" name="email" type="email" placeholder="you@example.com" required autocomplete="email" maxlength="254"></div>${passwordFields}${loginOptions}<div class="form-message" role="status"></div><button class="btn btn-dark" type="submit">${forgot?'Send reset link':register?'Create account':'Sign in'}${I('arrow')}</button></fieldset></form>${authLinks}<p class="auth-foot">By continuing, you agree to the portal’s <button data-action="terms" style="padding:0;text-decoration:underline;font-size:inherit">terms of use</button> and <button data-action="privacy" style="padding:0;text-decoration:underline;font-size:inherit">privacy policy</button>.</p></div></section></div>`;
 }
-function render(){let p=route();const auth=['login','register','forgot'];if(!location.hash){history.replaceState(null,'','#/login');p='login';}if(!state.user&&!auth.includes(p)){history.replaceState(null,'','#/login');p='login';}else if(isPortalAdmin()&&!auth.includes(p)&&p!=='admin'){history.replaceState(null,'','#/admin');p='admin';}else if(!isPortalAdmin()&&p==='admin'){history.replaceState(null,'',state.user?'#/dashboard':'#/login');p=state.user?'dashboard':'login';}document.title=`${({dashboard:'Overview',wallet:'My Wallet',investments:'Investments',events:'Events & Promotions',menu:'Our Menu',account:'My Account',franchising:'Franchising',login:'Sign In',register:'Join the Club',forgot:'Password Reset',admin:'Administration'})[p]} — Mom’s Touch`;$('#app').innerHTML=auth.includes(p)?authPage(p):p==='admin'?adminShell(adminPage()):shell(({dashboard,wallet,investments,events:eventsPage,menu:menuPage,account,franchising})[p](),p);updateHomeScreenBadge();finishPortalRender(p);startFeaturedEventCarousel(p);hidePortalLoader();}
+function render(){let p=route();const auth=['login','register','forgot'];if(!location.hash){history.replaceState(null,'','#/login');p='login';}if(!state.user&&!auth.includes(p)){history.replaceState(null,'','#/login');p='login';}else if(isPortalAdmin()&&!auth.includes(p)&&p!=='admin'){history.replaceState(null,'','#/admin');p='admin';}else if(!isPortalAdmin()&&p==='admin'){history.replaceState(null,'',state.user?'#/dashboard':'#/login');p=state.user?'dashboard':'login';}document.title=`${({dashboard:'Overview',wallet:'My Wallet',investments:'Investments',events:'Events & Promotions',menu:'Our Menu',account:'My Account',franchising:'Franchising',login:'Sign In',register:'Join the Club',forgot:'Password Reset',admin:'Administration'})[p]} — Mom’s Touch`;$('#app').innerHTML=auth.includes(p)?authPage(p):p==='admin'?adminShell(adminPage()):shell(({dashboard,wallet,investments,events:eventsPage,menu:menuPage,account,franchising})[p](),p);updateHomeScreenBadge();finishPortalRender(p);startFeaturedEventCarousel(p);hidePortalLoader(p);}
 function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),3800);}
 function closeModal(){const root=$('#modal-root');root.innerHTML='';$('#app').inert=false;document.body.style.overflow='';currentModal='';if(modalReturnFocus?.isConnected)modalReturnFocus.focus();}
 function openModal(content,wide=false){modalReturnFocus=document.activeElement;$('#modal-root').innerHTML=`<div class="modal-overlay" data-overlay="true"><section class="modal ${wide?'wide':''}" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1"><button class="modal-close" data-action="close" aria-label="Close dialog">${I('close')}</button>${content}</section></div>`;$('#app').inert=true;document.body.style.overflow='hidden';currentModal='open';$('.modal').focus();hidePortalLoader();}
@@ -284,4 +335,21 @@ if(form.id==='auth-form'){
 }catch(err){errorIn(form,err.message);}finally{isLoading=false;if(submit.isConnected)submit.disabled=false;}});
 document.addEventListener('keydown',e=>{if(!currentModal)return;if(e.key==='Escape'){pendingDeposit=null;pendingDepositReceipt=null;closeModal();return;}if(e.key==='Tab'){const elements=[...$('.modal').querySelectorAll('button,a,input,select,textarea,[tabindex="0"]')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=elements[0],last=elements.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('.modal'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('.modal'))){e.preventDefault();first?.focus();}}});
 window.addEventListener('hashchange',()=>{pendingDepositReceipt=null;showPortalLoader(portalLoaderDuration(route()));closeModal();render();window.scrollTo({top:0});});
-async function init(){showPortalLoader(7000);if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}render();if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);if(native)setInterval(refreshInvestmentEarnings,60000);}init();
+function preloadSplashLogin(){
+ if(!location.hash)history.replaceState(null,'','#/login');
+ if(route()!=='login')return false;
+ document.body.classList.add('splash-login-preloaded');
+ $('#app').innerHTML=authPage('login');
+ finishPortalRender('login');
+ return true;
+}
+async function init(){
+ showPortalLoader(7000);
+ splashLoginPending=preloadSplashLogin();
+ if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}
+ splashPortalReady=true;
+ render();
+ if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);
+ if(native)setInterval(refreshInvestmentEarnings,60000);
+}
+init();

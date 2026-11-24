@@ -261,3 +261,31 @@
 .notification-detail-list dt{color:#a09685}
 .notification-detail-list dd{margin:0;color:#625c51;text-align:right;overflow-wrap:anywhere}
 .unread-count{position:absolute;top:-7px;right:-9px;min-width:17px;height:17px;padding:0 4px;display:grid;place-items:center;border:1px solid #fff;border-radius:10px;background:#d84b3e;color:#fff;font-size:9px;font-weight:700;line-height:1}
+.portal-loader-brand{position:fixed;z-index:2001;left:50%;top:50%;width:var(--splash-logo-start-width,min(62vw,360px));height:auto;opacity:0;visibility:hidden;transform:translate(-50%,-50%);pointer-events:none}
+.portal-loader.is-transitioning{overflow:visible;background:transparent;pointer-events:none}
+.portal-loader.is-transitioning .portal-loader-content{animation:splash-video-out 150ms ease-out both}
+.portal-loader.is-transitioning .portal-loader-brand{visibility:visible;animation:splash-logo-to-header 500ms 50ms cubic-bezier(.22,.7,.25,1) both}
+@keyframes splash-video-out{to{opacity:0}}
+@keyframes splash-logo-to-header{
+ 0%{left:50%;top:50%;width:var(--splash-logo-start-width);opacity:0;transform:translate(-50%,-50%)}
+ 20%{opacity:1}
+ 100%{left:var(--header-logo-left);top:var(--header-logo-top);width:var(--header-logo-width);opacity:1;transform:none}
+}
+body.splash-login-preloaded .auth-story,body.splash-login-preloaded .auth-form-wrap{opacity:0}
+body.splash-login-preloaded .auth-story .brand{opacity:0}
+body.splash-login-entering .auth-story{animation:splash-login-banner-in 400ms 150ms ease-out both}
+body.splash-login-entering .auth-story .story-copy{animation:splash-login-content-in 360ms 200ms ease-out both}
+body.splash-login-entering .auth-story .auth-food{animation:splash-login-content-in 380ms 220ms ease-out both}
+body.splash-login-entering .auth-story .story-foot{animation:splash-login-content-in 320ms 280ms ease-out both}
+body.splash-login-entering .auth-story .brand{animation:splash-login-header-logo-in 150ms 500ms ease-out both}
+body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 350ms ease-out both}
+@keyframes splash-login-banner-in{from{opacity:0}to{opacity:1}}
+@keyframes splash-login-content-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes splash-login-header-logo-in{from{opacity:0}to{opacity:1}}
+@keyframes splash-login-form-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){
+ .portal-loader.is-transitioning .portal-loader-content,.portal-loader.is-transitioning .portal-loader-brand,
+ body.splash-login-entering .auth-story,body.splash-login-entering .auth-story .story-copy,
+ body.splash-login-entering .auth-story .auth-food,body.splash-login-entering .auth-story .story-foot,
+ body.splash-login-entering .auth-story .brand,body.splash-login-entering .auth-form-wrap{animation-duration:.01ms!important;animation-delay:0ms!important}
+}
