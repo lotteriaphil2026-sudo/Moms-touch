@@ -42,6 +42,8 @@ Use PHP 8.4+, Composer 2, and Laravel’s PHP extensions, including PDO MySQL or
 
    The command privately prompts for a 12–128 character password and confirmation. It hashes the password, creates a zero-balance wallet, refuses an existing email, and never prints the password. Members and administrators use the same sign-in page. There is no seeded admin login.
 
+   To enable the extra admin secret-key gate for classifying member accounts, set `ADMIN_MEMBER_CLASSIFICATION_KEY` in the private `.env` to a securely generated value of at least 32 characters (for example, `php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"`), then rebuild the configuration cache. Never commit or share the value. Admins can double-click a member name and choose Real or Dummy; Dummy accounts are omitted from the admin member count and directory but remain active, including referral links and attribution.
+
 5. Check settings and database readiness, then cache the application:
 
    ```bash

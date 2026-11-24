@@ -15,7 +15,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    protected $attributes = ['is_admin' => false];
+    protected $attributes = ['is_admin' => false, 'is_dummy' => false];
 
     /**
      * The attributes that are mass assignable.
@@ -56,6 +56,7 @@ class User extends Authenticatable
             'investment_nudge_sent_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_dummy' => 'boolean',
         ];
     }
 

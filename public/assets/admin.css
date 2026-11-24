@@ -71,3 +71,4 @@
  .admin-member-balances strong{font-size:20px}
  .admin-member-detail .admin-table td{font-size:13px}
 }
+.admin-classify-name{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}

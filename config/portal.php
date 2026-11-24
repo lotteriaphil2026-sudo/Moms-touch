@@ -3,6 +3,7 @@ return [
     'financial_operations_enabled' => (bool) env('PORTAL_FINANCIAL_OPERATIONS_ENABLED', false),
     'registration_enabled' => (bool) env('PORTAL_REGISTRATION_ENABLED', false),
     'deposit_qr_demo_mode' => (bool) env('PORTAL_DEPOSIT_QR_DEMO_MODE', false),
+    'admin_member_classification_key' => env('ADMIN_MEMBER_CLASSIFICATION_KEY'),
     // Basis points are fractions of one percent: 60 bps = 0.60% per day.
     'referral_incentive_basis_points' => 500,
     'plans' => [

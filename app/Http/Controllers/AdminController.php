@@ -4,6 +4,8 @@ use App\Models\{AdminAction, MemberSignIn, User, Wallet, WalletRequest};
 use App\Services\{WalletAdministrationService, WalletRequestService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
@@ -11,7 +13,7 @@ class AdminController extends Controller
     public function overview(): JsonResponse
     {
         return response()->json(['stats' => [
-            'members' => User::where('is_admin', false)->count(),
+            'members' => User::where('is_admin', false)->where('is_dummy', false)->count(),
             'pending_deposits' => WalletRequest::where('status', 'pending')->where('type', 'deposit')->where('test_only', false)->count(),
             'pending_withdrawals' => WalletRequest::where('status', 'pending')->where('type', 'withdraw')->count(),
             'wallet_total' => (int) Wallet::sum('balance_cents'), 'held_total' => (int) Wallet::sum('held_cents'),
@@ -22,7 +24,7 @@ class AdminController extends Controller
     public function users(Request $request): JsonResponse
     {
         $input = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $query = User::query()->select(['id', 'name', 'email', 'phone', 'is_admin', 'created_at']);
+        $query = User::query()->where('is_dummy', false)->select(['id', 'name', 'email', 'phone', 'is_admin', 'created_at']);
         if ($term = trim($input['search'] ?? '')) {
             $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%'));
         }
@@ -34,9 +36,52 @@ class AdminController extends Controller
             'invested' => $wallets->get($u->id)?->invested_cents ?? 0, 'held' => $wallets->get($u->id)?->held_cents ?? 0,
         ]), 'page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()]);
     }
+    public function classifyUser(Request $request, User $user): JsonResponse
+    {
+        $configuredKey = config('portal.admin_member_classification_key');
+        abort_unless(is_string($configuredKey) && strlen($configuredKey) >= 32, 503, 'Admin member classification is not configured.');
+
+        $input = $request->validate([
+            'classification' => ['required', Rule::in(['real', 'dummy'])],
+            'secret_key' => ['required', 'string', 'max:256'],
+            'request_id' => ['required', 'uuid'],
+        ]);
+        abort_unless(hash_equals($configuredKey, $input['secret_key']), 403, 'The admin secret key is incorrect.');
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot be classified as members.');
+
+        $isDummy = $input['classification'] === 'dummy';
+        DB::transaction(function () use ($request, $user, $input, $isDummy): void {
+            $member = User::query()->lockForUpdate()->findOrFail($user->id);
+            abort_unless(! $member->is_admin, 422, 'Administrator accounts cannot be classified as members.');
+
+            if ($member->is_dummy === $isDummy) {
+                return;
+            }
+
+            $member->forceFill(['is_dummy' => $isDummy])->save();
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $member->id,
+                'request_id' => $input['request_id'],
+                'request_fingerprint' => hash('sha256', 'member-classification|'.$member->id.'|'.($isDummy ? 'dummy' : 'real')),
+                'action' => 'member_classified',
+                'amount_cents' => 0,
+                'note' => 'Classified member as '.($isDummy ? 'dummy' : 'real').'.',
+                'metadata' => ['classification' => $isDummy ? 'dummy' : 'real'],
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Member classification updated.',
+            'classification' => $isDummy ? 'dummy' : 'real',
+            'is_dummy' => $isDummy,
+        ]);
+    }
     public function user(User $user, PortalController $portal): JsonResponse
     {
         $payload = $portal->payloadForUser($user);
+        $payload['user']['is_dummy'] = $user->is_dummy;
         $payload['wallet_requests'] = WalletRequest::where('user_id', $user->id)
             ->where('test_only', false)
             ->latest('id')

@@ -22,6 +22,7 @@ class AdminWorkflowTest extends TestCase
   $u=$this->member();$r=$this->walletRequest($u,'deposit','5000');
   $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
+  $this->postJson('/portal/admin/users/'.$u->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('x',32),'request_id'=>(string)Str::uuid()])->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
  }
@@ -134,6 +135,35 @@ class AdminWorkflowTest extends TestCase
   $this->getJson('/portal/admin/users?search='.urlencode($u->email))->assertOk()->assertJsonCount(1,'items')->assertJsonMissingPath('items.0.password')->assertJsonMissingPath('items.0.remember_token');
   $this->getJson('/portal/admin/users/'.$u->id)->assertOk()->assertJsonPath('user.id',$u->id)->assertJsonMissingPath('user.password')->assertJsonMissingPath('user.remember_token')->assertJsonStructure(['wallet','investments','transactions','wallet_requests','franchise_applications']);
   $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.members',1);$this->getJson('/portal/admin/audit')->assertOk()->assertJsonCount(0,'items');
+ }
+ public function test_admin_classification_requires_the_configured_secret_hides_dummy_from_directory_and_preserves_referrals(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);$requestId=(string)Str::uuid();
+  config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);
+  $this->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('w',48),'request_id'=>$requestId])->assertForbidden();
+  $this->assertFalse($member->fresh()->is_dummy);$this->assertDatabaseCount('admin_actions',0);
+  $this->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('s',48),'request_id'=>$requestId])
+   ->assertOk()->assertJsonPath('classification','dummy')->assertJsonPath('is_dummy',true)->assertJsonMissingPath('secret_key');
+  $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.members',0);
+  $directory=$this->getJson('/portal/admin/users')->assertOk()->assertJsonPath('total',1)->json('items');
+  $this->assertNotContains($member->id,array_column($directory,'id'));
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.is_dummy',true);
+  $this->actingAs($member)->getJson('/portal/state')->assertOk()->assertJsonMissingPath('user.is_dummy')->assertJsonPath('user.referral_code',$member->referral_code);
+  $this->postJson('/portal/logout')->assertOk();
+  $this->postJson('/portal/register',['name'=>'Referred Member','email'=>'referred@example.test','phone'=>'+639171234567','date_of_birth'=>'1990-01-01','address'=>'123 Example Street, Makati City','gender'=>'Other','marital_status'=>'Single','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','referral_code'=>$member->referral_code])
+   ->assertOk()->assertJsonPath('user.referrer.id',$member->id);
+  $this->assertDatabaseHas('users',['id'=>$member->id,'is_dummy'=>true]);
+  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'member_classified','note'=>'Classified member as dummy.']);
+  $this->actingAs($admin)->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'real','secret_key'=>str_repeat('s',48),'request_id'=>(string)Str::uuid()])
+   ->assertOk()->assertJsonPath('is_dummy',false);
+  $this->getJson('/portal/admin/users')->assertOk()->assertJsonPath('total',2);
+ }
+ public function test_admin_classification_fails_closed_when_secret_is_unconfigured_and_cannot_target_an_admin(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $body=['classification'=>'dummy','secret_key'=>str_repeat('s',48),'request_id'=>(string)Str::uuid()];
+  $this->postJson('/portal/admin/users/'.$member->id.'/classification',$body)->assertStatus(503);
+  config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);
+  $this->postJson('/portal/admin/users/'.$admin->id.'/classification',[...$body,'request_id'=>(string)Str::uuid()])->assertUnprocessable();
+  $this->assertFalse($member->fresh()->is_dummy);$this->assertDatabaseCount('admin_actions',0);
  }
  public function test_simulation_off_blocks_every_admin_financial_mutation(): void {
   $u=$this->member(false,'1000');$admin=$this->member(true);$r=$this->walletRequest($u,'withdraw','100');config(['portal.financial_operations_enabled'=>false]);$this->actingAs($admin);
