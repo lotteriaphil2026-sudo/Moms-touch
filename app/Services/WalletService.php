@@ -68,6 +68,32 @@ class WalletService
                 'amount_cents' => $cents, 'balance_after_cents' => $wallet->balance_cents,
                 'status' => 'completed',
             ]);
+
+            if ($type === 'invest' && $user->referrer_id) {
+                $referralBonusCents = intdiv(
+                    $cents * config('portal.referral_incentive_basis_points') + 5000,
+                    10000
+                );
+
+                if ($referralBonusCents > 0) {
+                    $referrerWallet = Wallet::where('user_id', $user->referrer_id)->lockForUpdate()->firstOrFail();
+                    $referrerWallet->balance_cents += $referralBonusCents;
+                    $referrerWallet->save();
+
+                    WalletTransaction::create([
+                        'reference' => (string) Str::uuid(),
+                        'user_id' => $user->referrer_id,
+                        'request_id' => (string) Str::uuid(),
+                        'request_fingerprint' => hash('sha256', 'referral_bonus|'.$user->id.'|'.$requestId),
+                        'type' => 'referral_bonus',
+                        'description' => '5% referral incentive · '.$planDetails['name'].' allocation',
+                        'amount_cents' => $referralBonusCents,
+                        'balance_after_cents' => $referrerWallet->balance_cents,
+                        'status' => 'completed',
+                    ]);
+                }
+            }
+
             return true;
         }, 3);
 
@@ -78,6 +104,13 @@ class WalletService
                 default => 'Your investment was created. Sign in to view the plan details.',
             };
             app(WebPushNotificationService::class)->notify($user->id, $message);
+
+            if ($type === 'invest' && $user->referrer_id) {
+                app(WebPushNotificationService::class)->notify(
+                    $user->referrer_id,
+                    'A 5% referral incentive was credited to your wallet.'
+                );
+            }
         }
     }
 }

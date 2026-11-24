@@ -33,7 +33,13 @@ class PortalController extends Controller
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
                 'referrer' => $referrerData,
             ],
-            'wallet' => ['balance' => $wallet->balance_cents, 'held' => $wallet->held_cents, 'invested' => $wallet->invested_cents, 'earnings' => $wallet->earnings_cents, 'daily_earnings' => $dailyEarnings],
+            'wallet' => [
+                'balance' => $wallet->balance_cents, 'held' => $wallet->held_cents,
+                'invested' => $wallet->invested_cents, 'earnings' => $wallet->earnings_cents,
+                'referral_earnings' => WalletTransaction::where('user_id', $user->id)
+                    ->where('type', 'referral_bonus')->sum('amount_cents'),
+                'daily_earnings' => $dailyEarnings,
+            ],
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
             'withdrawal_accounts' => WithdrawalAccount::where('user_id', $user->id)->latest('id')->get()->map(fn ($account) => $account->publicData()),
             'investments' => InvestmentAllocation::where('user_id', $user->id)->latest('id')->get()->map(fn ($i) => [

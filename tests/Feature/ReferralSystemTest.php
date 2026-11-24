@@ -2,8 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\{User, Wallet};
+use App\Models\{User, Wallet, WalletTransaction};
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ReferralSystemTest extends TestCase
@@ -13,7 +14,7 @@ class ReferralSystemTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['portal.registration_enabled' => true]);
+        config(['portal.registration_enabled' => true, 'portal.financial_operations_enabled' => true]);
     }
 
     private function registrationPayload(array $overrides = []): array
@@ -117,5 +118,80 @@ class ReferralSystemTest extends TestCase
         ]))->assertOk();
 
         $this->assertSame('MARIA-SANTOS', $response->json('user.referral_code'));
+    }
+
+    public function test_referrer_receives_five_percent_of_each_referred_members_investment_once(): void
+    {
+        $referrer = User::factory()->create(['name' => 'Referring Member']);
+        Wallet::create(['user_id' => $referrer->id]);
+        $member = User::factory()->create(['name' => 'Referred Member']);
+        $member->referrer()->associate($referrer);
+        $member->save();
+        Wallet::create(['user_id' => $member->id, 'balance_cents' => 2000000]);
+
+        $this->actingAs($member);
+        $requestId = (string) Str::uuid();
+        $payload = [
+            'type' => 'invest',
+            'amount' => '5000.10',
+            'plan' => 'select',
+            'request_id' => $requestId,
+        ];
+
+        $this->postJson('/portal/transactions', $payload)
+            ->assertOk()
+            ->assertJsonPath('wallet.balance', 1499990);
+
+        $referrerWallet = Wallet::where('user_id', $referrer->id)->firstOrFail();
+        $this->assertSame(25001, $referrerWallet->balance_cents);
+        $this->assertDatabaseHas('wallet_transactions', [
+            'user_id' => $referrer->id,
+            'type' => 'referral_bonus',
+            'amount_cents' => 25001,
+            'balance_after_cents' => 25001,
+            'status' => 'completed',
+        ]);
+        $this->assertSame(1, WalletTransaction::where('user_id', $referrer->id)->where('type', 'referral_bonus')->count());
+
+        $this->postJson('/portal/transactions', $payload)->assertOk();
+
+        $this->assertSame(25001, $referrerWallet->fresh()->balance_cents);
+        $this->assertSame(1, WalletTransaction::where('user_id', $referrer->id)->where('type', 'referral_bonus')->count());
+
+        $this->postJson('/portal/transactions', [
+            ...$payload,
+            'amount' => '5000',
+            'request_id' => (string) Str::uuid(),
+        ])->assertOk();
+
+        $this->assertSame(50001, $referrerWallet->fresh()->balance_cents);
+        $this->assertSame(2, WalletTransaction::where('user_id', $referrer->id)->where('type', 'referral_bonus')->count());
+        $this->actingAs($referrer)->getJson('/portal/state')
+            ->assertOk()
+            ->assertJsonPath('wallet.referral_earnings', 50001)
+            ->assertJsonPath('transactions.0.type', 'referral_bonus');
+    }
+
+    public function test_failed_investment_does_not_credit_a_referral_incentive(): void
+    {
+        $referrer = User::factory()->create();
+        Wallet::create(['user_id' => $referrer->id]);
+        $member = User::factory()->create();
+        $member->referrer()->associate($referrer);
+        $member->save();
+        Wallet::create(['user_id' => $member->id]);
+
+        $this->actingAs($member)->postJson('/portal/transactions', [
+            'type' => 'invest',
+            'amount' => '5000',
+            'plan' => 'select',
+            'request_id' => (string) Str::uuid(),
+        ])->assertUnprocessable();
+
+        $this->assertSame(0, Wallet::where('user_id', $referrer->id)->value('balance_cents'));
+        $this->assertDatabaseMissing('wallet_transactions', [
+            'user_id' => $referrer->id,
+            'type' => 'referral_bonus',
+        ]);
     }
 }
