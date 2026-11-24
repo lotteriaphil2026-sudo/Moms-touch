@@ -79,8 +79,8 @@ class WebPushNotificationService
             return;
         }
 
-        $badgeCount = WalletTransaction::where('user_id', $userId)->count()
-            + WalletRequest::where('user_id', $userId)->count();
+        $badgeCount = WalletTransaction::where('user_id', $userId)->whereNull('read_at')->count()
+            + WalletRequest::where('user_id', $userId)->whereNull('read_at')->count();
 
         $payload = json_encode([
             'title' => $title,

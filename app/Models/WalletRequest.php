@@ -11,6 +11,7 @@ class WalletRequest extends Model
         return [
             'amount_cents' => 'integer',
             'reviewed_at' => 'datetime',
+            'read_at' => 'datetime',
             'test_only' => 'boolean',
             'withdrawal_account_holder' => 'encrypted',
             'withdrawal_account_number' => 'encrypted',
@@ -23,7 +24,8 @@ class WalletRequest extends Model
             'amount' => $this->amount_cents, 'status' => $this->status,
             'payment_method' => $this->payment_method, 'test_only' => (bool) $this->test_only,
             'member_note' => $this->member_note, 'review_note' => $this->review_note,
-            'reviewed_at' => $this->reviewed_at?->toIso8601String(), 'created_at' => $this->created_at->toIso8601String()];
+            'reviewed_at' => $this->reviewed_at?->toIso8601String(),
+            'read_at' => $this->read_at?->toIso8601String(), 'created_at' => $this->created_at->toIso8601String()];
     }
 
     public function adminData(): array

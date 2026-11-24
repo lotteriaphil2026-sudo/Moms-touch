@@ -26,6 +26,7 @@ Route::prefix('portal')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [PortalController::class, 'profile'])->middleware('throttle:20,1');
+        Route::post('/notifications/read-all', [PortalController::class, 'markNotificationsRead'])->middleware('throttle:10,1');
         Route::post('/withdrawal-accounts', [WithdrawalAccountController::class, 'store'])->middleware('throttle:10,1');
         Route::delete('/withdrawal-accounts/{withdrawalAccount}', [WithdrawalAccountController::class, 'destroy'])->middleware('throttle:10,1');
         Route::post('/push/subscriptions', [PushSubscriptionController::class, 'store'])->middleware('throttle:10,1');

@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use App\Services\{InterestAccrualService, WalletRequestService, WalletService};
 use Illuminate\Http\{JsonResponse, Request};
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 class PortalController extends Controller
 {
@@ -10,7 +11,7 @@ class PortalController extends Controller
     {
         $user = $request->user();
         if (!$user) {
-            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'daily_earnings' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'withdrawal_accounts' => [], 'franchise_applications' => []]);
+            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'referral_earnings' => 0, 'daily_earnings' => 0, 'unread_notifications' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'withdrawal_accounts' => [], 'franchise_applications' => []]);
         }
         return response()->json($this->payloadForUser($user));
     }
@@ -39,6 +40,8 @@ class PortalController extends Controller
                 'referral_earnings' => WalletTransaction::where('user_id', $user->id)
                     ->where('type', 'referral_bonus')->sum('amount_cents'),
                 'daily_earnings' => $dailyEarnings,
+                'unread_notifications' => WalletTransaction::where('user_id', $user->id)->whereNull('read_at')->count()
+                    + WalletRequest::where('user_id', $user->id)->whereNull('read_at')->count(),
             ],
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
             'withdrawal_accounts' => WithdrawalAccount::where('user_id', $user->id)->latest('id')->get()->map(fn ($account) => $account->publicData()),
@@ -58,10 +61,28 @@ class PortalController extends Controller
             ]),
             'transactions' => WalletTransaction::where('user_id', $user->id)->latest('id')->get()->map(fn ($t) => [
                 'id' => $t->reference, 'type' => $t->type, 'description' => $t->description,
-                'amount' => $t->amount_cents, 'status' => $t->status, 'balance_after' => $t->balance_after_cents, 'created_at' => $t->created_at->toIso8601String(),
+                'amount' => $t->amount_cents, 'status' => $t->status, 'balance_after' => $t->balance_after_cents,
+                'read_at' => $t->read_at?->toIso8601String(), 'created_at' => $t->created_at->toIso8601String(),
             ]),
         ];
     }
+
+    public function markNotificationsRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        app(InterestAccrualService::class)->accrue($user);
+        $readAt = now();
+
+        DB::transaction(function () use ($user, $readAt): void {
+            WalletTransaction::where('user_id', $user->id)->whereNull('read_at')
+                ->update(['read_at' => $readAt, 'updated_at' => $readAt]);
+            WalletRequest::where('user_id', $user->id)->whereNull('read_at')
+                ->update(['read_at' => $readAt, 'updated_at' => $readAt]);
+        });
+
+        return response()->json($this->payloadForUser($user));
+    }
+
     public function transact(Request $request, WalletService $wallets, WalletRequestService $requests): JsonResponse
     {
         $input = $request->validate([

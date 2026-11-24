@@ -165,6 +165,36 @@ class PortalTest extends TestCase
         $this->approvedTransaction('withdraw', '100.30')->assertOk()->assertJsonPath('wallet.balance', 990005);
         $this->assertDatabaseHas('wallet_transactions', ['amount_cents' => 10030, 'balance_after_cents' => 990005]);
     }
+
+    public function test_member_can_mark_all_wallet_activity_as_read_and_new_activity_remains_unread(): void
+    {
+        $member = $this->member();
+        app(\App\Services\WalletService::class)->transact($member, 'deposit', '100', null, (string) Str::uuid());
+        app(\App\Services\WalletRequestService::class)->submit(
+            $member,
+            'deposit',
+            '5000',
+            (string) Str::uuid(),
+            'Bank deposit',
+            'bpi'
+        );
+
+        $this->actingAs($member)->getJson('/portal/state')
+            ->assertOk()
+            ->assertJsonPath('wallet.unread_notifications', 2)
+            ->assertJsonPath('transactions.0.read_at', null)
+            ->assertJsonPath('wallet_requests.0.read_at', null);
+
+        $response = $this->postJson('/portal/notifications/read-all')
+            ->assertOk()
+            ->assertJsonPath('wallet.unread_notifications', 0);
+        $this->assertNotNull($response->json('transactions.0.read_at'));
+        $this->assertNotNull($response->json('wallet_requests.0.read_at'));
+
+        app(\App\Services\WalletService::class)->transact($member, 'deposit', '100', null, (string) Str::uuid());
+        $this->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.unread_notifications', 1);
+    }
+
     public function test_overspending_fails_without_changing_wallet_or_ledger(): void
     {
         $this->actingAs($this->member());
