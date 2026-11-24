@@ -12,13 +12,16 @@ class AdminController extends Controller
 {
     public function overview(): JsonResponse
     {
+        $memberWallets = fn () => Wallet::query()->whereIn('user_id', User::query()->where('is_dummy', false)->select('id'));
+        $memberRequests = fn () => WalletRequest::query()->whereHas('user', fn ($query) => $query->where('is_dummy', false));
+
         return response()->json(['stats' => [
             'members' => User::where('is_admin', false)->where('is_dummy', false)->count(),
-            'pending_deposits' => WalletRequest::where('status', 'pending')->where('type', 'deposit')->where('test_only', false)->count(),
-            'pending_withdrawals' => WalletRequest::where('status', 'pending')->where('type', 'withdraw')->count(),
-            'wallet_total' => (int) Wallet::sum('balance_cents'), 'held_total' => (int) Wallet::sum('held_cents'),
-            'invested_total' => (int) Wallet::sum('invested_cents'),
-        ], 'requests' => WalletRequest::with('user:id,name,email')->where('status', 'pending')->where('test_only', false)->oldest('id')->limit(8)->get()->map(fn ($r) => $this->requestData($r)),
+            'pending_deposits' => $memberRequests()->where('status', 'pending')->where('type', 'deposit')->where('test_only', false)->count(),
+            'pending_withdrawals' => $memberRequests()->where('status', 'pending')->where('type', 'withdraw')->where('test_only', false)->count(),
+            'wallet_total' => (int) $memberWallets()->sum('balance_cents'), 'held_total' => (int) $memberWallets()->sum('held_cents'),
+            'invested_total' => (int) $memberWallets()->sum('invested_cents'),
+        ], 'requests' => $memberRequests()->with('user:id,name,email')->where('status', 'pending')->where('test_only', false)->oldest('id')->limit(8)->get()->map(fn ($r) => $this->requestData($r)),
             'financial_operations_enabled' => (bool) config('portal.financial_operations_enabled')]);
     }
     public function users(Request $request): JsonResponse

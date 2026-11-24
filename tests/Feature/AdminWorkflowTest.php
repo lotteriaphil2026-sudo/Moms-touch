@@ -155,7 +155,44 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'member_classified','note'=>'Classified member as dummy.']);
   $this->actingAs($admin)->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'real','secret_key'=>str_repeat('s',48),'request_id'=>(string)Str::uuid()])
    ->assertOk()->assertJsonPath('is_dummy',false);
-  $this->getJson('/portal/admin/users')->assertOk()->assertJsonPath('total',2);
+  $this->getJson('/portal/admin/users')->assertOk()->assertJsonPath('total',3);
+ }
+ public function test_dummy_members_are_excluded_from_admin_overview_but_visible_in_request_queues(): void {
+  $member=$this->member(false,'10000');$dummy=$this->member(false,'10000');$admin=$this->member(true);
+  $memberDeposit=$this->walletRequest($member,'deposit','5000');$dummyDeposit=$this->walletRequest($dummy,'deposit','5000');
+  $memberWithdrawal=$this->walletRequest($member,'withdraw','1000');$dummyWithdrawal=$this->walletRequest($dummy,'withdraw','1000');
+  config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);
+  $this->actingAs($admin)->postJson('/portal/admin/users/'.$dummy->id.'/classification',[
+   'classification'=>'dummy','secret_key'=>str_repeat('s',48),'request_id'=>(string)Str::uuid(),
+  ])->assertOk()->assertJsonPath('is_dummy',true);
+
+  $overview=$this->getJson('/portal/admin/overview')->assertOk()
+   ->assertJsonPath('stats.members',1)
+   ->assertJsonPath('stats.wallet_total',900000)
+   ->assertJsonPath('stats.held_total',100000)
+   ->assertJsonPath('stats.pending_deposits',1)
+   ->assertJsonPath('stats.pending_withdrawals',1)
+   ->assertJsonCount(2,'requests');
+  $this->assertEqualsCanonicalizing(
+   [$memberDeposit->id,$memberWithdrawal->id],
+   array_column($overview->json('requests'),'id')
+  );
+
+  $deposits=$this->getJson('/portal/admin/requests?type=deposit&status=all')->assertOk()->assertJsonCount(2,'items')->json('items');
+  $withdrawals=$this->getJson('/portal/admin/requests?type=withdraw&status=all')->assertOk()->assertJsonCount(2,'items')->json('items');
+  $this->assertEqualsCanonicalizing(
+   [$member->id,$dummy->id],
+   array_column(array_column($deposits,'user'),'id')
+  );
+  $this->assertEqualsCanonicalizing(
+   [$member->id,$dummy->id],
+   array_column(array_column($withdrawals,'user'),'id')
+  );
+  $depositUsers=$this->getJson('/portal/admin/deposit-users?status=all')->assertOk()->assertJsonPath('total',2)->json('items');
+  $this->assertEqualsCanonicalizing(
+   [$member->id,$dummy->id],
+   array_column(array_column($depositUsers,'user'),'id')
+  );
  }
  public function test_admin_classification_fails_closed_when_secret_is_unconfigured_and_cannot_target_an_admin(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
