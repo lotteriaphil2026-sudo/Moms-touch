@@ -289,3 +289,77 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
  body.splash-login-entering .auth-story .auth-food,body.splash-login-entering .auth-story .story-foot,
  body.splash-login-entering .auth-story .brand,body.splash-login-entering .auth-form-wrap{animation-duration:.01ms!important;animation-delay:0ms!important}
 }
+.modal.investment-modal-dialog{width:min(760px,100%);max-width:760px;max-height:94dvh;padding:0;overflow-y:auto;border-radius:22px;background:#fffefa}
+.investment-modal-dialog .modal-close{top:23px;right:24px;width:42px;height:42px;background:#fff9ed;color:#392a17}
+.investment-modal-dialog .modal-close svg{width:24px;height:24px}
+.investment-modal-hero{height:350px;position:relative;display:grid;grid-template-rows:auto 1fr auto;overflow:hidden;padding:25px 40px 20px;border-radius:22px 22px 0 0;background:radial-gradient(ellipse at 60% 48%,#fff5d5 0,#fff9ed 48%,#fff4d7 100%);color:#392914}
+.investment-modal-hero:before,.investment-modal-hero:after{position:absolute;content:"";border:1px solid #efbd45;border-radius:50%;pointer-events:none}
+.investment-modal-hero:before{width:360px;height:360px;right:-60px;top:-210px}
+.investment-modal-hero:after{width:250px;height:250px;left:-125px;bottom:-90px;opacity:.65}
+.investment-modal-hero-copy{position:relative;z-index:2}
+.investment-modal-hero-copy h1{max-width:80%;margin:0;color:#302213;font-family:var(--heading);font-size:42px;line-height:1.04;letter-spacing:-.045em}
+.investment-modal-hero-copy p{margin:5px 0 0;color:#a17b51;font-size:16px;line-height:1.4}
+.investment-modal-art{position:absolute;inset:65px 0 62px;display:grid;place-items:center;pointer-events:none}
+.investment-modal-orb{position:absolute;width:230px;height:230px;border-radius:50%;background:#ffe5a0;opacity:.7}
+.investment-modal-spark{position:absolute;z-index:1;left:25%;top:19%;color:#eea500}
+.investment-modal-spark svg{width:38px;height:38px;stroke-width:1.3}
+.investment-modal-art img{position:relative;z-index:1;width:min(43%,340px);height:250px;object-fit:contain;filter:drop-shadow(0 10px 12px #9a6c2720)}
+.investment-modal-stats{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;text-align:center}
+.investment-modal-stats>div{display:flex;flex-direction:column;align-items:center}
+.investment-modal-stats>div+div{border-left:1px solid #dec99e}
+.investment-modal-stats strong{color:#68400e;font-family:var(--heading);font-size:42px;line-height:1.05;letter-spacing:-.04em}
+.investment-modal-stats span{margin-top:3px;color:#a17b51;font-size:16px}
+.investment-modal-body{padding:18px 38px 25px}
+.investment-modal-body>h2{margin:0 0 3px;padding:0;color:#392914;font-size:29px;letter-spacing:-.035em}
+.investment-modal-body>p{margin:0 0 14px;color:#a17b51;font-size:15px;line-height:1.5}
+.investment-modal-dialog .field{margin:13px 0}
+.investment-modal-dialog .field label{font-size:14px;color:#765a3e;margin-bottom:7px}
+.investment-modal-dialog .field input,.investment-modal-dialog .field select{min-height:54px;padding:11px 15px;border-color:#e4d8c8;border-radius:9px;font-size:17px}
+.investment-modal-quote{grid-template-columns:1fr 1fr;gap:0;margin:17px -5px 12px;padding:14px 18px;border-color:#f1d59d;border-radius:13px;background:linear-gradient(110deg,#fff8e9,#fff4dc)}
+.investment-modal-quote>div+div{padding-left:22px;border-left:1px solid #e6d1a7}
+.investment-modal-quote>div>span{font-size:14px;color:#a17b51}
+.investment-modal-quote strong{margin-top:4px;color:#805314;font-size:32px}
+.investment-modal-balance{display:flex;justify-content:space-between;margin:9px 0 18px;padding:3px 0 13px;border-bottom:1px solid #e9dfd0;color:#8f795c;font-size:16px}
+.investment-modal-balance strong{color:#68400e;font-size:17px}
+.investment-modal-dialog form>.btn{min-height:58px;border-radius:11px;background:linear-gradient(90deg,#ffb900,#ffb000);color:#462d04;font-size:20px;font-weight:700}
+.investment-modal-dialog form>.btn svg{width:23px;height:23px;margin-left:12px}
+.investment-modal-dialog .fineprint{font-size:13px!important;line-height:1.35!important;color:#a17b51!important;margin-top:14px!important}
+@media(max-width:600px){
+ .modal-overlay{padding:10px}
+ .modal.investment-modal-dialog{max-height:96dvh;border-radius:17px}
+ .investment-modal-hero{height:285px;padding:21px 22px 17px;border-radius:17px 17px 0 0}
+ .investment-modal-hero-copy h1{max-width:82%;font-size:30px}
+ .investment-modal-hero-copy p{max-width:82%;font-size:13px}
+ .investment-modal-art{inset:63px 0 55px}
+ .investment-modal-orb{width:180px;height:180px}
+ .investment-modal-spark{left:16%;top:19%}
+ .investment-modal-spark svg{width:30px;height:30px}
+ .investment-modal-art img{width:min(58%,260px);height:190px}
+ .investment-modal-stats strong{font-size:30px}
+ .investment-modal-stats span{font-size:13px}
+ .investment-modal-body{padding:16px 20px 21px}
+ .investment-modal-body>h2{font-size:23px}
+ .investment-modal-body>p{font-size:13px}
+ .investment-modal-dialog .field{margin:11px 0}
+ .investment-modal-dialog .field label{font-size:12px}
+ .investment-modal-dialog .field input,.investment-modal-dialog .field select{min-height:49px;font-size:15px}
+ .investment-modal-quote{margin:13px 0 10px;padding:12px}
+ .investment-modal-quote>div+div{padding-left:12px}
+ .investment-modal-quote>div>span{font-size:11px}
+ .investment-modal-quote strong{font-size:25px}
+ .investment-modal-balance{font-size:13px}
+ .investment-modal-balance strong{font-size:14px}
+ .investment-modal-dialog form>.btn{min-height:51px;font-size:17px}
+ .investment-modal-dialog .fineprint{font-size:10px!important}
+}
+.earning-plan>.btn.investment-choice-morph{gap:8px;transition:background-color .25s ease,border-color .25s ease,color .25s ease,transform .25s ease}
+.earning-plan>.btn.investment-choice-morph:disabled{opacity:1;cursor:default}
+.earning-plan>.btn.is-loading{background:#fbf8ef;border-color:#e4d8c8;color:#8f795c}
+.earning-plan>.btn.is-success{background:#edf5e9;border-color:#b9d1ad;color:#547a47}
+.investment-choice-spinner{width:15px;height:15px;flex:0 0 15px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:investment-choice-spin .7s linear infinite}
+.investment-choice-check{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;animation:investment-choice-check-in .25s ease-out both}
+.investment-choice-check svg{width:16px;height:16px}
+.investment-choice-shared{position:fixed!important;z-index:120!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important;margin:0!important;padding:0 12px!important;min-width:0!important;max-width:none!important;white-space:nowrap!important;pointer-events:none!important;box-shadow:none!important;transform:none!important}
+@keyframes investment-choice-spin{to{transform:rotate(360deg)}}
+@keyframes investment-choice-check-in{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.investment-choice-spinner{animation-duration:1.4s}}

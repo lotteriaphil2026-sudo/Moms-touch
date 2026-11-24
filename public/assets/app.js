@@ -240,7 +240,8 @@ function exportCSV(){const rows=[['Transaction ID','Type','Description','Amount 
 function searchResults(q){const found=[...events.map(e=>({...e,kind:'Event',action:'event',image:e.image})),...menu.map(e=>({...e,title:e.name,kind:'Menu',action:'menu-detail'}))].filter(e=>e.title.toLowerCase().includes(q.toLowerCase())).slice(0,7);$('#search-results').innerHTML=found.length?found.map(e=>`<button class="search-result" data-action="${e.action}" data-id="${e.id}"><img src="${imageUrl(e.image)}" alt=""><span><strong>${e.title}</strong><small>${e.kind}</small></span>${I('arrow')}</button>`).join(''):'<p class="muted" style="padding:20px 0;font-size:12px">No matches. Try “burger” or “member”.</p>';}
 document.addEventListener('click',async e=>{if(e.target.matches('[data-overlay]')){pendingDeposit=null;pendingDepositReceipt=null;closeModal();return;}const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id;
 if(['dashboard','wallet','investments','events','account','login','franchising'].includes(action)){closeModal();go(action);return;}
-if(['deposit','withdraw','invest'].includes(action)){if(action==='invest')showPortalLoader(3000);amountModal(action,id);return;}
+if(action==='invest'){if(el.closest('.earning-plan')){animateInvestmentChoice(el,id);return;}amountModal(action,id);return;}
+if(['deposit','withdraw'].includes(action)){amountModal(action,id);return;}
 if(action==='deposit-bank'){submitDemoDeposit(id,el);return;}
 if(action==='deposit-receipt'){
 const receipt=pendingDepositReceipt;
