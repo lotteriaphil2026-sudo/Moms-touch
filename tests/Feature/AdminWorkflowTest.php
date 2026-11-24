@@ -40,6 +40,19 @@ class AdminWorkflowTest extends TestCase
   $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
   $this->assertSame(1,WalletRequest::where('user_id',$first->id)->count());$this->assertSame(1,WalletRequest::where('user_id',$second->id)->count());
  }
+ public function test_demo_deposits_are_excluded_from_admin_review_lists(): void {
+  $member=$this->member();$admin=$this->member(true);
+  config(['portal.deposit_qr_demo_mode'=>true]);
+  $demo=$this->actingAs($member)->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',true)->json('submitted_request');
+  config(['portal.deposit_qr_demo_mode'=>false]);
+  $real=$this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',false)->json('submitted_request');
+  $this->actingAs($admin);
+  $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.pending_deposits',1)->assertJsonCount(1,'requests')->assertJsonPath('requests.0.id',$real['id']);
+  $this->getJson('/portal/admin/requests?status=all')->assertOk()->assertJsonCount(1,'items')->assertJsonPath('items.0.id',$real['id']);
+  $this->getJson('/portal/admin/deposit-users?status=all')->assertOk()->assertJsonPath('total',1);
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonCount(1,'wallet_requests')->assertJsonPath('wallet_requests.0.id',$real['id']);
+  $this->assertDatabaseHas('wallet_requests',['id'=>$demo['id'],'test_only'=>true]);
+ }
  public function test_deposit_is_pending_until_approval_and_replays_do_not_duplicate_credit(): void {
   $u=$this->member();$admin=$this->member(true);$id=(string)Str::uuid();$this->actingAs($u);
   $payload=['type'=>'deposit','amount'=>'5000.25','payment_method'=>'bpi','request_id'=>$id];

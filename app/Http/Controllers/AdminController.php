@@ -12,11 +12,11 @@ class AdminController extends Controller
     {
         return response()->json(['stats' => [
             'members' => User::where('is_admin', false)->count(),
-            'pending_deposits' => WalletRequest::where('status', 'pending')->where('type', 'deposit')->count(),
+            'pending_deposits' => WalletRequest::where('status', 'pending')->where('type', 'deposit')->where('test_only', false)->count(),
             'pending_withdrawals' => WalletRequest::where('status', 'pending')->where('type', 'withdraw')->count(),
             'wallet_total' => (int) Wallet::sum('balance_cents'), 'held_total' => (int) Wallet::sum('held_cents'),
             'invested_total' => (int) Wallet::sum('invested_cents'),
-        ], 'requests' => WalletRequest::with('user:id,name,email')->where('status', 'pending')->oldest('id')->limit(8)->get()->map(fn ($r) => $this->requestData($r)),
+        ], 'requests' => WalletRequest::with('user:id,name,email')->where('status', 'pending')->where('test_only', false)->oldest('id')->limit(8)->get()->map(fn ($r) => $this->requestData($r)),
             'financial_operations_enabled' => (bool) config('portal.financial_operations_enabled')]);
     }
     public function users(Request $request): JsonResponse
@@ -38,6 +38,7 @@ class AdminController extends Controller
     {
         $payload = $portal->payloadForUser($user);
         $payload['wallet_requests'] = WalletRequest::where('user_id', $user->id)
+            ->where('test_only', false)
             ->latest('id')
             ->get()
             ->map(fn (WalletRequest $walletRequest) => $walletRequest->adminData());
@@ -54,7 +55,7 @@ class AdminController extends Controller
     {
         $input = $request->validate(['status' => ['nullable', Rule::in(['pending', 'approved', 'rejected', 'all'])],
             'type' => ['nullable', Rule::in(['deposit', 'withdraw', 'all'])], 'page' => ['nullable', 'integer', 'min:1']]);
-        $query = WalletRequest::with('user:id,name,email');
+        $query = WalletRequest::with('user:id,name,email')->where('test_only', false);
         if (($input['status'] ?? 'pending') !== 'all') { $query->where('status', $input['status'] ?? 'pending'); }
         if (($input['type'] ?? 'all') !== 'all') { $query->where('type', $input['type']); }
         $page = $query->latest('id')->paginate(25);
@@ -67,7 +68,7 @@ class AdminController extends Controller
             'status' => ['nullable', Rule::in(['pending', 'approved', 'rejected', 'all'])],
             'page' => ['nullable', 'integer', 'min:1'],
         ]);
-        $query = WalletRequest::query()->where('type', 'deposit');
+        $query = WalletRequest::query()->where('type', 'deposit')->where('test_only', false);
         if (($input['status'] ?? 'pending') !== 'all') {
             $query->where('status', $input['status'] ?? 'pending');
         }

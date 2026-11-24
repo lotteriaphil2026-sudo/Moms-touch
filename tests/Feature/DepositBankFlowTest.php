@@ -110,4 +110,43 @@ class DepositBankFlowTest extends TestCase
             'test_only' => false,
         ]);
     }
+
+    public function test_demo_cleanup_migration_deletes_test_requests_and_preserves_audit_history(): void
+    {
+        $member = $this->account();
+        $admin = $this->account(true);
+
+        $this->actingAs($member)->postJson('/portal/transactions', [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ])->assertOk();
+        $demoRequest = WalletRequest::firstOrFail();
+
+        $this->actingAs($admin)->postJson('/portal/admin/requests/'.$demoRequest->id.'/review', [
+            'decision' => 'reject',
+            'note' => 'Demo record cleanup test',
+        ])->assertOk();
+
+        config(['portal.deposit_qr_demo_mode' => false]);
+        $this->actingAs($member)->postJson('/portal/transactions', [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ])->assertOk();
+        $realRequest = WalletRequest::where('test_only', false)->firstOrFail();
+
+        $migration = require database_path('migrations/2026_11_24_000002_delete_test_only_deposit_requests.php');
+        $migration->up();
+
+        $this->assertDatabaseMissing('wallet_requests', ['id' => $demoRequest->id]);
+        $this->assertDatabaseHas('wallet_requests', ['id' => $realRequest->id, 'test_only' => false]);
+        $this->assertDatabaseHas('admin_actions', [
+            'action' => 'request_rejected',
+            'wallet_request_id' => null,
+            'note' => 'Demo record cleanup test',
+        ]);
+    }
 }
