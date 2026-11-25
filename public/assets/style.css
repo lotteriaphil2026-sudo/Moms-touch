@@ -482,3 +482,5 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
  .auth-content .field input,.auth-content .btn,.auth-back{transition:none}
  .auth-content .btn:not(:disabled):hover,.auth-content .btn:not(:disabled):active{transform:none}
 }
+.modal .modal-visual{padding:0;overflow:hidden}
+.modal .modal-visual>img{display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center}
