@@ -209,6 +209,11 @@
 .event-art.external-article-art>.eyebrow,
 .event-art.external-article-art>.event-tagline,
 .event-art.external-article-art>.art-sticker{display:none}
+.event-art.full-image-art{height:auto;min-height:0;padding:0}
+.event-art.full-image-art>img{position:static;display:block;width:100%;height:auto;object-fit:contain;right:auto;bottom:auto;transform:none;filter:none}
+.event-art.full-image-art>.eyebrow,
+.event-art.full-image-art>.event-tagline,
+.event-art.full-image-art>.art-sticker{display:none}
 .article-summary{padding:13px 15px;margin:14px 0;background:#f8f5ee;border-radius:9px}
 .article-summary .eyebrow{font-size:8px;color:#ba934b;letter-spacing:.08em}
 .article-summary p{margin:8px 0 0;color:#625b50;font-size:11px;line-height:1.6}
