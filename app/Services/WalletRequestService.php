@@ -2,13 +2,17 @@
 namespace App\Services;
 use App\Models\{AdminAction, User, Wallet, WalletRequest, WalletTransaction};
 use App\Models\WithdrawalAccount;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Throwable;
 
 class WalletRequestService
 {
-    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null, ?string $paymentMethod = null, ?WithdrawalAccount $withdrawalAccount = null): WalletRequest
+    public function submit(User $user, string $type, string $amount, string $requestId, ?string $note = null, ?string $paymentMethod = null, ?WithdrawalAccount $withdrawalAccount = null, ?UploadedFile $receipt = null): WalletRequest
     {
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
         abort_unless(in_array($type, ['deposit', 'withdraw'], true), 422, 'Invalid request type.');
@@ -29,37 +33,66 @@ class WalletRequestService
         }
         $fingerprint = hash('sha256', $fingerprintData);
         app(InterestAccrualService::class)->accrue($user);
-        [$request, $created] = DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod, $withdrawalAccount) {
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
-            $existing = WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->first();
-            if ($existing) {
-                if (!hash_equals($existing->request_fingerprint, $fingerprint)) {
-                    throw ValidationException::withMessages(['request_id' => 'This reference was already used with different details.']);
+        $storedReceiptPath = null;
+        try {
+            [$request, $created] = DB::transaction(function () use ($user, $type, $cents, $requestId, $note, $fingerprint, $paymentMethod, $withdrawalAccount, $receipt, &$storedReceiptPath) {
+                if ($storedReceiptPath !== null) {
+                    if (is_string($storedReceiptPath) && Storage::disk('local')->exists($storedReceiptPath)) {
+                        Storage::disk('local')->delete($storedReceiptPath);
+                    }
+                    $storedReceiptPath = null;
                 }
-                return [$existing, false];
-            }
-            if (WalletTransaction::where('user_id', $user->id)->where('request_id', $requestId)->exists()) {
-                throw ValidationException::withMessages(['request_id' => 'This reference is already in use.']);
-            }
-            if ($type === 'withdraw') {
-                if ($wallet->balance_cents < $cents) {
-                    throw ValidationException::withMessages(['amount' => 'This amount exceeds your available balance.']);
+                $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+                $existing = WalletRequest::where('user_id', $user->id)->where('request_id', $requestId)->first();
+                if ($existing) {
+                    if (!hash_equals($existing->request_fingerprint, $fingerprint)) {
+                        throw ValidationException::withMessages(['request_id' => 'This reference was already used with different details.']);
+                    }
+                    if ($receipt && !$existing->receipt_path) {
+                        $storedReceiptPath = $receipt->store('deposit-receipts/'.$user->id, 'local');
+                        if (!is_string($storedReceiptPath) || $storedReceiptPath === '') {
+                            throw new RuntimeException('The receipt image could not be saved. Please try again.');
+                        }
+                        $existing->update(['receipt_path' => $storedReceiptPath]);
+                    }
+                    return [$existing, false];
                 }
-                $wallet->balance_cents -= $cents;
-                $wallet->held_cents += $cents;
-                $wallet->save();
+                if (WalletTransaction::where('user_id', $user->id)->where('request_id', $requestId)->exists()) {
+                    throw ValidationException::withMessages(['request_id' => 'This reference is already in use.']);
+                }
+                if ($type === 'withdraw') {
+                    if ($wallet->balance_cents < $cents) {
+                        throw ValidationException::withMessages(['amount' => 'This amount exceeds your available balance.']);
+                    }
+                    $wallet->balance_cents -= $cents;
+                    $wallet->held_cents += $cents;
+                    $wallet->save();
+                }
+                $request = WalletRequest::create(['reference' => (string) Str::uuid(), 'user_id' => $user->id,
+                    'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'type' => $type,
+                    'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending',
+                    'payment_method' => $paymentMethod,
+                    'withdrawal_account_id' => $withdrawalAccount?->id,
+                    'withdrawal_account_type' => $withdrawalAccount?->type,
+                    'withdrawal_account_provider' => $withdrawalAccount?->provider,
+                    'withdrawal_account_holder' => $withdrawalAccount?->account_holder,
+                    'withdrawal_account_number' => $withdrawalAccount?->account_number,
+                    'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]);
+                if ($receipt) {
+                    $storedReceiptPath = $receipt->store('deposit-receipts/'.$user->id, 'local');
+                    if (!is_string($storedReceiptPath) || $storedReceiptPath === '') {
+                        throw new RuntimeException('The receipt image could not be saved. Please try again.');
+                    }
+                    $request->update(['receipt_path' => $storedReceiptPath]);
+                }
+                return [$request, true];
+            }, 3);
+        } catch (Throwable $error) {
+                if (is_string($storedReceiptPath) && Storage::disk('local')->exists($storedReceiptPath)) {
+                Storage::disk('local')->delete($storedReceiptPath);
             }
-            return [WalletRequest::create(['reference' => (string) Str::uuid(), 'user_id' => $user->id,
-                'request_id' => $requestId, 'request_fingerprint' => $fingerprint, 'type' => $type,
-                'amount_cents' => $cents, 'member_note' => $note ?: null, 'status' => 'pending',
-                'payment_method' => $paymentMethod,
-                'withdrawal_account_id' => $withdrawalAccount?->id,
-                'withdrawal_account_type' => $withdrawalAccount?->type,
-                'withdrawal_account_provider' => $withdrawalAccount?->provider,
-                'withdrawal_account_holder' => $withdrawalAccount?->account_holder,
-                'withdrawal_account_number' => $withdrawalAccount?->account_number,
-                'test_only' => $type === 'deposit' && $paymentMethod !== null && config('portal.deposit_qr_demo_mode')]), true];
-        }, 3);
+            throw $error;
+        }
 
         if ($created && !$request->test_only) {
             $message = $type === 'deposit'

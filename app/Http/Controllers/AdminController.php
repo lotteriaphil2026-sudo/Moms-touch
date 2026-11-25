@@ -5,6 +5,7 @@ use App\Services\{WalletAdministrationService, WalletRequestService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -151,6 +152,45 @@ class AdminController extends Controller
             'last_page' => $page->lastPage(),
             'total' => $page->total(),
         ]);
+    }
+    public function receiptLogs(Request $request): JsonResponse
+    {
+        $request->validate(['page' => ['nullable', 'integer', 'min:1']]);
+        $page = WalletRequest::with('user:id,name,email')
+            ->where('type', 'deposit')
+            ->whereNotNull('receipt_path')
+            ->latest('id')
+            ->paginate(25);
+
+        return response()->json([
+            'items' => $page->getCollection()->map(fn (WalletRequest $r) => [
+                'id' => $r->id,
+                'reference' => $r->reference,
+                'amount' => $r->amount_cents,
+                'payment_method' => $r->payment_method,
+                'status' => $r->status,
+                'test_only' => (bool) $r->test_only,
+                'created_at' => $r->created_at->toIso8601String(),
+                'receipt_url' => url('/portal/admin/requests/'.$r->id.'/receipt'),
+                'user' => $r->user?->only(['id', 'name', 'email']),
+            ]),
+            'page' => $page->currentPage(),
+            'last_page' => $page->lastPage(),
+            'total' => $page->total(),
+        ]);
+    }
+    public function receipt(WalletRequest $walletRequest)
+    {
+        abort_unless($walletRequest->type === 'deposit' && $walletRequest->receipt_path, 404);
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($walletRequest->receipt_path), 404);
+
+        return $disk->response(
+            $walletRequest->receipt_path,
+            'deposit-receipt-'.$walletRequest->reference.'.'.pathinfo($walletRequest->receipt_path, PATHINFO_EXTENSION),
+            ['Cache-Control' => 'private, no-store, max-age=0'],
+            'inline'
+        );
     }
     public function review(Request $request, WalletRequest $walletRequest, WalletRequestService $requests): JsonResponse
     {

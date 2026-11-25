@@ -39,7 +39,9 @@ Route::prefix('portal')->group(function () {
             Route::get('/users/{user}', [AdminController::class, 'user']);
             Route::post('/users/{user}/classification', [AdminController::class, 'classifyUser']);
             Route::get('/deposit-users', [AdminController::class, 'depositUsers']);
+            Route::get('/receipt-logs', [AdminController::class, 'receiptLogs']);
             Route::get('/requests', [AdminController::class, 'requests']);
+            Route::get('/requests/{walletRequest}/receipt', [AdminController::class, 'receipt']);
             Route::post('/requests/{walletRequest}/review', [AdminController::class, 'review']);
             Route::post('/users/{user}/funds', [AdminController::class, 'funds']);
             Route::post('/users/{user}/plans', [AdminController::class, 'plans']);

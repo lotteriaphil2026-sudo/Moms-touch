@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\{User, Wallet, WalletRequest};
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -15,15 +17,32 @@ class DepositBankFlowTest extends TestCase
     {
         parent::setUp();
         config(['portal.financial_operations_enabled' => true, 'portal.deposit_qr_demo_mode' => true]);
+        Storage::fake('local');
     }
 
-    private function account(bool $admin = false): User
+    private function account(bool $admin = false, bool $dummy = false): User
     {
         $user = User::factory()->create();
-        $user->forceFill(['is_admin' => $admin])->save();
+        $user->forceFill(['is_admin' => $admin, 'is_dummy' => $dummy])->save();
         Wallet::create(['user_id' => $user->id]);
 
         return $user;
+    }
+
+    private function submitDeposit(array $payload)
+    {
+        return $this->post('/portal/transactions', [
+            ...$payload,
+            'receipt' => $this->receiptUpload(),
+        ], ['Accept' => 'application/json']);
+    }
+
+    private function receiptUpload(): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent(
+            'receipt.png',
+            base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lGkAAAAASUVORK5CYII=')
+        );
     }
 
     public function test_demo_bank_deposit_is_saved_as_test_only_and_cannot_be_approved(): void
@@ -31,7 +50,7 @@ class DepositBankFlowTest extends TestCase
         $member = $this->account();
         $admin = $this->account(true);
 
-        $response = $this->actingAs($member)->postJson('/portal/transactions', [
+        $response = $this->actingAs($member)->submitDeposit([
             'type' => 'deposit',
             'amount' => '5000',
             'payment_method' => 'bpi',
@@ -62,9 +81,9 @@ class DepositBankFlowTest extends TestCase
             'request_id' => (string) Str::uuid(),
         ];
 
-        $this->actingAs($member)->postJson('/portal/transactions', $request)
+        $this->actingAs($member)->submitDeposit($request)
             ->assertUnprocessable()->assertJsonValidationErrors('payment_method');
-        $this->postJson('/portal/transactions', [...$request, 'payment_method' => 'other-bank'])
+        $this->submitDeposit([...$request, 'payment_method' => 'other-bank'])
             ->assertUnprocessable()->assertJsonValidationErrors('payment_method');
 
         $this->assertDatabaseCount('wallet_requests', 0);
@@ -80,12 +99,12 @@ class DepositBankFlowTest extends TestCase
             'request_id' => (string) Str::uuid(),
         ];
 
-        $this->actingAs($member)->postJson('/portal/transactions', $payload)
+        $this->actingAs($member)->submitDeposit($payload)
             ->assertUnprocessable()
             ->assertJsonValidationErrors('amount');
         $this->assertDatabaseCount('wallet_requests', 0);
 
-        $this->postJson('/portal/transactions', [...$payload, 'amount' => '5000', 'request_id' => (string) Str::uuid()])
+        $this->submitDeposit([...$payload, 'amount' => '5000', 'request_id' => (string) Str::uuid()])
             ->assertOk()
             ->assertJsonPath('submitted_request.amount', 500000);
     }
@@ -95,7 +114,7 @@ class DepositBankFlowTest extends TestCase
         config(['portal.deposit_qr_demo_mode' => false]);
         $member = $this->account();
 
-        $this->actingAs($member)->postJson('/portal/transactions', [
+        $this->actingAs($member)->submitDeposit([
             'type' => 'deposit',
             'amount' => '5000',
             'payment_method' => 'bpi',
@@ -116,7 +135,7 @@ class DepositBankFlowTest extends TestCase
         $member = $this->account();
         $admin = $this->account(true);
 
-        $this->actingAs($member)->postJson('/portal/transactions', [
+        $this->actingAs($member)->submitDeposit([
             'type' => 'deposit',
             'amount' => '5000',
             'payment_method' => 'bpi',
@@ -130,7 +149,7 @@ class DepositBankFlowTest extends TestCase
         ])->assertOk();
 
         config(['portal.deposit_qr_demo_mode' => false]);
-        $this->actingAs($member)->postJson('/portal/transactions', [
+        $this->actingAs($member)->submitDeposit([
             'type' => 'deposit',
             'amount' => '5000',
             'payment_method' => 'bpi',
@@ -147,6 +166,75 @@ class DepositBankFlowTest extends TestCase
             'action' => 'request_rejected',
             'wallet_request_id' => null,
             'note' => 'Demo record cleanup test',
+        ]);
+    }
+
+    public function test_deposit_requires_a_valid_receipt_and_admin_receipt_logs_are_private(): void
+    {
+        $member = $this->account();
+        $admin = $this->account(true);
+        $payload = [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ];
+
+        $this->actingAs($member)->postJson('/portal/transactions', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('receipt');
+        $this->assertDatabaseCount('wallet_requests', 0);
+
+        $this->submitDeposit($payload)
+            ->assertOk()
+            ->assertJsonPath('submitted_request.has_receipt', true);
+        $deposit = WalletRequest::firstOrFail();
+        Storage::disk('local')->assertExists($deposit->receipt_path);
+
+        $this->actingAs($admin)->getJson('/portal/admin/receipt-logs')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('items.0.reference', $deposit->reference);
+        $this->get('/portal/admin/requests/'.$deposit->id.'/receipt')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+
+        $this->actingAs($member)->get('/portal/admin/requests/'.$deposit->id.'/receipt')->assertForbidden();
+    }
+
+    public function test_deposit_receipt_rejects_non_image_uploads(): void
+    {
+        $member = $this->account();
+        $this->actingAs($member)->post('/portal/transactions', [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+            'receipt' => UploadedFile::fake()->create('receipt.txt', 10, 'text/plain'),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('receipt');
+        $this->assertDatabaseCount('wallet_requests', 0);
+    }
+
+    public function test_dummy_member_can_submit_a_deposit_without_a_receipt(): void
+    {
+        $dummy = $this->account(dummy: true);
+
+        $this->actingAs($dummy)->postJson('/portal/transactions', [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ])
+            ->assertOk()
+            ->assertJsonPath('user.is_dummy', true)
+            ->assertJsonPath('submitted_request.has_receipt', false);
+
+        $this->assertDatabaseHas('wallet_requests', [
+            'user_id' => $dummy->id,
+            'type' => 'deposit',
+            'receipt_path' => null,
         ]);
     }
 }

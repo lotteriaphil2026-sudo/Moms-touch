@@ -23,6 +23,7 @@ class WalletRequest extends Model
         return ['id' => $this->id, 'reference' => $this->reference, 'type' => $this->type,
             'amount' => $this->amount_cents, 'status' => $this->status,
             'payment_method' => $this->payment_method, 'test_only' => (bool) $this->test_only,
+            'has_receipt' => $this->receipt_path !== null,
             'member_note' => $this->member_note, 'review_note' => $this->review_note,
             'reviewed_at' => $this->reviewed_at?->toIso8601String(),
             'read_at' => $this->read_at?->toIso8601String(), 'created_at' => $this->created_at->toIso8601String()];

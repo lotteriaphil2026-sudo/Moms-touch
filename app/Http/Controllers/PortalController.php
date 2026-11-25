@@ -30,7 +30,7 @@ class PortalController extends Controller
                 'id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone,
                 'date_of_birth' => $user->date_of_birth?->format('Y-m-d'), 'address' => $user->address,
                 'gender' => $user->gender, 'marital_status' => $user->marital_status,
-                'is_admin' => $user->is_admin, 'created_at' => $user->created_at->toIso8601String(),
+                'is_admin' => $user->is_admin, 'is_dummy' => $user->is_dummy, 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
                 'referrer' => $referrerData,
             ],
@@ -93,6 +93,8 @@ class PortalController extends Controller
             'withdrawal_account_id' => ['nullable', 'required_if:type,withdraw', 'prohibited_unless:type,withdraw', 'integer', 'min:1'],
             'request_id' => ['required', 'uuid'],
             'note' => ['nullable', 'string', 'max:500'],
+            'receipt' => [Rule::requiredIf(fn () => $request->input('type') === 'deposit' && ! $request->user()->is_dummy),
+                'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'prohibited_unless:type,deposit'],
         ]);
         if ($input['type'] === 'invest') {
             $wallets->transact($request->user(), 'invest', $input['amount'], $input['plan'], $input['request_id']);
@@ -111,7 +113,7 @@ class PortalController extends Controller
                 ],
             ]);
         } elseif ($input['type'] === 'deposit') {
-            $depositRequest = $requests->submit($request->user(), 'deposit', $input['amount'], $input['request_id'], $input['note'] ?? null, $input['payment_method']);
+            $depositRequest = $requests->submit($request->user(), 'deposit', $input['amount'], $input['request_id'], $input['note'] ?? null, $input['payment_method'], null, $request->file('receipt'));
             return response()->json([
                 ...$this->payloadForUser($request->user()),
                 'submitted_request' => $depositRequest->publicData(),

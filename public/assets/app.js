@@ -18,7 +18,7 @@ for(const key of ['mt-preview','mt-admin-preview']){try{sessionStorage.removeIte
 let state=seed();
 state.franchise_applications??=[];
 let splashLoginPending=false,splashPortalReady=false,splashVideoEnded=false,splashTransitionStarted=false;
-let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIndex=events.findIndex(event=>event.id===1),featuredEventPaused=false,featuredEventTimer=null;let portalLoaderHideTimer=null,portalLoaderStartedAt=null,portalLoaderMinimumMs=0;let isLoading=false;let modalReturnFocus=null;let currentModal='';let toastTimer;let pendingDeposit=null;let pendingDepositReceipt=null;
+let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIndex=events.findIndex(event=>event.id===1),featuredEventPaused=false,featuredEventTimer=null;let portalLoaderHideTimer=null,portalLoaderStartedAt=null,portalLoaderMinimumMs=0;let isLoading=false;let modalReturnFocus=null;let currentModal='';let toastTimer;let pendingDeposit=null;
 window.PORTAL_BANK_LABELS={landbank:'Landbank',bpi:'BPI',security_bank:'Security Bank'};
 const depositBankLabels=window.PORTAL_BANK_LABELS;
 const depositQrImages={landbank:'/LANDBANK.png',bpi:'/bpi.png',security_bank:'/Security%20Bank.png'};
@@ -80,7 +80,7 @@ function hidePortalLoader(page=route()){
 function portalLoaderDuration(page){return ['investments','wallet','events','franchising'].includes(page)?3000:0;}
 function go(p){showPortalLoader(portalLoaderDuration(p));if(route()===p){render();}else location.hash='/'+p;}
 function signed(){if(state.user)return true;go('login');toast('Sign in to manage your account.');return false;}
-async function api(path,method='GET',body){if(!native)throw new Error('Sign-in is temporarily unavailable. Please check back soon.');const r=await fetch('/portal/'+path,{method,credentials:'same-origin',headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':window.PORTAL_CONFIG?.csrf||''},...(body?{body:JSON.stringify(body)}:{})});const data=await r.json().catch(()=>({message:'Unable to reach the portal. Please try again.'}));if(data.csrf)window.PORTAL_CONFIG.csrf=data.csrf;if(!r.ok){if(r.status===401&&state.user){state.user=null;clearAdminCache();closeModal();go('login');toast('Your session ended. Please sign in again.');}throw new Error(Object.values(data.errors||{}).flat()[0]||data.message||'Please try again.');}return data;}
+async function api(path,method='GET',body){if(!native)throw new Error('Sign-in is temporarily unavailable. Please check back soon.');const multipart=body instanceof FormData;const r=await fetch('/portal/'+path,{method,credentials:'same-origin',headers:{'Accept':'application/json',...(multipart?{}:{'Content-Type':'application/json'}),'X-CSRF-TOKEN':window.PORTAL_CONFIG?.csrf||''},...(body?{body:multipart?body:JSON.stringify(body)}:{})});const data=await r.json().catch(()=>({message:'Unable to reach the portal. Please try again.'}));if(data.csrf)window.PORTAL_CONFIG.csrf=data.csrf;if(!r.ok){if(r.status===401&&state.user){state.user=null;clearAdminCache();closeModal();go('login');toast('Your session ended. Please sign in again.');}throw new Error(Object.values(data.errors||{}).flat()[0]||data.message||'Please try again.');}return data;}
 function brand(cls='brand'){return `<img class="${cls}" src="/assets/brand.webp" alt="Mom’s Touch" width="245" height="32">`;}
 function shell(body,page){const user=state.user;return `<aside class="sidebar"><a class="brand-link" href="#/dashboard" aria-label="Mom’s Touch overview">${brand()}</a><p class="brand-sub">YOUR MEMBER SPACE</p><p class="nav-label">THE EVERYDAY GOOD</p><nav class="side-nav" aria-label="Main navigation">${nav.map(([id,icon,label])=>`<a href="#/${id}" class="${page===id?'active':''}" ${page===id?'aria-current="page"':''}>${I(icon)}<span>${label}</span>${id==='events'?`<span class="nav-count">${events.filter(e=>e.status==='ongoing').length}</span>`:''}</a>`).join('')}</nav><div class="side-bottom"><div class="care-card"><div class="care-icon">${I('heart')}</div><h4>A little help, with care.</h4><p>We’re here to make your member experience feel easy.</p><button data-action="help">Visit help center ${I('arrow')}</button></div><div class="side-foot">${I('shield')}<span>Made with care. Always.</span></div></div></aside><div class="main-wrap"><header class="topbar"><a class="mobile-brand" href="#/dashboard" style="display:none">${brand('mobile-brand')}</a><div class="breadcrumb"><span>Member portal</span>${I('chevron')}<span>${nav.find(n=>n[0]===page)?.[2]||'Overview'}</span></div><div class="top-actions"><span class="language">${I('globe')} English</span><button class="icon-btn search-btn" data-action="search" aria-label="Search portal">${I('search')}</button><button class="icon-btn" data-action="notifications" aria-label="View notifications">${I('bell')}<i class="unread"></i></button><span class="top-separator"></span><button class="profile-btn" data-action="${user?'account':'login'}" aria-label="${user?'Open my account':'Sign in'}"><span class="avatar">${user?esc(user.name.split(' ').map(w=>w[0]).slice(0,2).join('')):'M'}</span><span class="profile-copy"><strong>${user?esc(user.name.split(' ')[0]):'Hello, there'}</strong><small>${user?'Member':'Sign in to your space'}</small></span>${I('down')}</button></div></header><main class="content">${serverError?'<div class="form-error">We could not load your account. Refresh the page to try again.</div>':''}${body}<footer class="footer"><span>© 2026 Mom’s Touch. Made with care.</span><div class="footer-links"><button data-action="privacy">Privacy policy</button><button data-action="terms">Terms of use</button><button data-action="help">Need help?</button></div></footer></main></div><nav class="bottom-nav" aria-label="Mobile navigation">${[['dashboard','grid','Home'],['wallet','wallet','Wallet'],['investments','trend','Invest'],['events','events','Events'],['franchising','store','Franchise'],['account','user','My']].map(([id,icon,label])=>`<a href="#/${id}" class="${page===id?'active':''}" ${page===id?'aria-current="page"':''}>${I(icon)}<span>${label}</span></a>`).join('')}</nav>`;}
 function heading(kicker,title,desc,actions=''){return `<div class="page-heading"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p>${desc}</p></div>${actions?`<div class="heading-actions">${actions}</div>`:''}</div>`;}
@@ -195,23 +195,49 @@ function amountModal(type,planId='select'){
 }
 
 function openDepositBankModal(data){
- pendingDeposit=data;
+ pendingDeposit={...data,bank:null};
  openModal(`<h2 id="dialog-title">Choose a bank</h2><p>Select a bank to view its payment QR code.</p><div class="deposit-bank-choices" style="display:grid;gap:10px;margin:20px 0">${Object.entries(depositBankLabels).map(([id,name])=>`<button class="deposit-bank-choice btn btn-outline" type="button" data-action="deposit-bank" data-id="${id}" aria-label="View ${esc(name)} payment QR"><img class="deposit-bank-logo" src="${depositBankLogos[id]}" alt="${esc(name)}">${I('arrow')}</button>`).join('')}</div><button class="btn btn-dark" type="button" data-action="close">Cancel</button>`);
 }
 
-async function submitDemoDeposit(bank,button){
+function showDepositQr(bank){
  if(!pendingDeposit||isLoading||!depositBankLabels[bank])return;
+ pendingDeposit.bank=bank;
+ const demoMode=Boolean(window.PORTAL_CONFIG?.demo_deposit_qr);
+ const needsReceipt=!state.user?.is_dummy;
+ const instructions=demoMode
+  ?'This is a demo QR and cannot receive or credit real payments. Click Done to submit a demo request. Closing this window cancels it.'
+  :'Pay using this QR and keep your receipt. After completing payment, click Done to submit your deposit request for admin review. Closing this window cancels it.';
+ openModal(`${demoMode?`<div class="demo-notice" role="alert" style="color:#ad4b38">${I('shield')} DEMO MODE — do not make a real payment.</div>`:''}<h2 id="dialog-title">${esc(depositBankLabels[bank])} payment QR</h2><img class="deposit-test-qr" style="display:block;margin:20px auto;background:#fff;border:1px solid #eee;border-radius:8px;max-width:100%;height:auto" src="${depositQrImages[bank]}" width="320" height="320" alt="${esc(depositBankLabels[bank])} QR code payment"><p>Amount: <strong>${cash(moneyCents(pendingDeposit.amount))}</strong></p><p>${esc(instructions)}</p>${needsReceipt?'<div class="field deposit-receipt-field"><label for="deposit-receipt">Upload receipt photo or screenshot</label><input id="deposit-receipt" name="receipt" type="file" accept="image/*" required><small>Required · JPG, PNG, or WebP · up to 2 MB</small></div>':''}<button class="btn btn-dark" type="button" data-action="deposit-confirm" aria-label="Done and submit deposit request"${needsReceipt?' disabled':''}>Done ${I('check')}</button>`);
+ const receiptInput=document.getElementById('deposit-receipt');
+ if(receiptInput){
+  const confirmButton=document.querySelector('[data-action="deposit-confirm"]');
+  receiptInput.addEventListener('change',()=>{confirmButton.disabled=!receiptInput.files?.length;});
+ }
+}
+
+async function submitDepositRequest(button){
+ if(!pendingDeposit?.bank||isLoading)return;
+ const receiptInput=document.getElementById('deposit-receipt');
+ if(!state.user?.is_dummy&&!receiptInput?.files?.length){toast('Upload your payment receipt photo or screenshot before clicking Done.');return;}
  const pending=pendingDeposit;
  isLoading=true;
- document.querySelectorAll('[data-action="deposit-bank"]').forEach(item=>{item.disabled=true;});
+ button.disabled=true;
+ button.textContent='Submitting request…';
  try{
-  state=await api('transactions','POST',{type:'deposit',amount:pending.amount,request_id:pending.requestId,note:pending.note,payment_method:bank});
+  const body=new FormData();
+  body.append('type','deposit');
+  body.append('amount',pending.amount);
+  body.append('request_id',pending.requestId);
+  body.append('note',pending.note);
+  body.append('payment_method',pending.bank);
+  const receiptImage=receiptInput?.files?.[0];
+  if(receiptImage)body.append('receipt',receiptImage);
+  state=await api('transactions','POST',body);
   const request=state.submitted_request;
   if(!request?.reference)throw new Error('The server did not confirm the deposit request.');
-  const demoRequest=Boolean(request.test_only);
-  pendingDepositReceipt={
+  const receipt={
    amount:Number(request.amount)/100,
-   bank:depositBankLabels[bank],
+   bank:depositBankLabels[pending.bank],
    fee:0,
    referenceNumber:request.reference,
    createdAt:request.created_at,
@@ -219,12 +245,14 @@ async function submitDemoDeposit(bank,button){
    status:request.status==='approved'?'completed':request.status==='rejected'?'rejected':'pending',
   };
   pendingDeposit=null;
-  openModal(`${demoRequest?`<div class="demo-notice" role="alert" style="color:#ad4b38">${I('shield')} DEMO MODE — do not make a real payment.</div>`:''}<h2 id="dialog-title">${esc(depositBankLabels[bank])} payment QR</h2><img class="deposit-test-qr" style="display:block;margin:20px auto;background:#fff;border:1px solid #eee;border-radius:8px;max-width:100%;height:auto" src="${depositQrImages[bank]}" width="320" height="320" alt="${esc(depositBankLabels[bank])} QR code payment"><p>Deposit request <strong>${esc(request.reference)}</strong></p><p>Amount: <strong>${cash(request.amount)}</strong></p><p>${demoRequest?'This request is marked demo-only and cannot be approved or credited.':'Pay using this QR, keep your receipt, and submit the request. An admin may verify the transfer before approving the deposit.'}</p><button class="btn btn-dark" type="button" data-action="deposit-receipt">Done ${I('check')}</button>`);
+  closeModal();
+  render();
+  if(!window.MomsTouchReceipt?.show(receipt))toast('Your deposit request was submitted, but its receipt could not be displayed. You can check it in your wallet activity.');
  }catch(err){
   toast(err.message);
  }finally{
   isLoading=false;
-  if(button.isConnected)button.disabled=false;
+  if(button.isConnected){button.disabled=false;button.innerHTML=`Done ${I('check')}`;}
  }
 }
 async function applyTransaction(type,raw,planId,requestId,note='',withdrawalAccountId=null){
@@ -238,21 +266,15 @@ async function applyTransaction(type,raw,planId,requestId,note='',withdrawalAcco
 }
 function exportCSV(){const rows=[['Transaction ID','Type','Description','Amount (PHP)','Date'],...state.transactions.map(t=>[t.id,t.type,t.description,(t.amount/100).toFixed(2),t.created_at])];const csv=rows.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'}));const a=document.createElement('a');a.href=url;a.download='moms-touch-wallet-activity.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('Your wallet activity has been exported.');}
 function searchResults(q){const found=[...events.map(e=>({...e,kind:'Event',action:'event',image:e.image})),...menu.map(e=>({...e,title:e.name,kind:'Menu',action:'menu-detail'}))].filter(e=>e.title.toLowerCase().includes(q.toLowerCase())).slice(0,7);$('#search-results').innerHTML=found.length?found.map(e=>`<button class="search-result" data-action="${e.action}" data-id="${e.id}"><img src="${imageUrl(e.image)}" alt=""><span><strong>${e.title}</strong><small>${e.kind}</small></span>${I('arrow')}</button>`).join(''):'<p class="muted" style="padding:20px 0;font-size:12px">No matches. Try “burger” or “member”.</p>';}
-document.addEventListener('click',async e=>{if(e.target.matches('[data-overlay]')){pendingDeposit=null;pendingDepositReceipt=null;closeModal();return;}const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id;
+document.addEventListener('click',async e=>{if(e.target.matches('[data-overlay]')){if(isLoading&&pendingDeposit?.bank)return;pendingDeposit=null;closeModal();return;}const el=e.target.closest('[data-action]');if(!el)return;const action=el.dataset.action,id=el.dataset.id;
 if(['dashboard','wallet','investments','events','account','login','franchising'].includes(action)){closeModal();go(action);return;}
 if(action==='invest'){if(el.closest('.earning-plan')){animateInvestmentChoice(el,id);return;}amountModal(action,id);return;}
 if(['deposit','withdraw'].includes(action)){amountModal(action,id);return;}
-if(action==='deposit-bank'){submitDemoDeposit(id,el);return;}
-if(action==='deposit-receipt'){
-const receipt=pendingDepositReceipt;
-pendingDepositReceipt=null;
-closeModal();
-if(!receipt||!window.MomsTouchReceipt?.show(receipt))toast('The receipt could not be displayed. Your deposit request is still saved in your wallet.');
-return;
-}
+if(action==='deposit-bank'){showDepositQr(id);return;}
+if(action==='deposit-confirm'){submitDepositRequest(el);return;}
 if(action==='franchise-signin'){go('login?return=franchising');return;}
 if(action==='franchise-detail'){showFranchiseApplication(id);return;}
-if(action==='close'){pendingDeposit=null;pendingDepositReceipt=null;closeModal();return;}
+if(action==='close'){if(isLoading&&pendingDeposit?.bank)return;pendingDeposit=null;closeModal();return;}
 if(action==='featured-event-prev'){moveFeaturedEvent(-1);return;}
 if(action==='featured-event-next'){moveFeaturedEvent(1);return;}
 if(action==='featured-event-toggle'){if(featuredEventPaused||(!featuredEventTimer&&prefersReducedMotion())){featuredEventPaused=false;startFeaturedEventCarousel('dashboard',true);}else featuredEventPaused=true;updateFeaturedEventToggle();return;}
@@ -334,8 +356,8 @@ if(form.id==='auth-form'){
  else{state=await api(kind==='register'?'register':'login','POST',{...data,remember:!!data.remember});if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);go(isPortalAdmin()?'admin':authDestination());toast(isPortalAdmin()?'Welcome to administration.':'Welcome to your member space.');}
 }
 }catch(err){errorIn(form,err.message);}finally{isLoading=false;if(submit.isConnected)submit.disabled=false;}});
-document.addEventListener('keydown',e=>{if(!currentModal)return;if(e.key==='Escape'){pendingDeposit=null;pendingDepositReceipt=null;closeModal();return;}if(e.key==='Tab'){const elements=[...$('.modal').querySelectorAll('button,a,input,select,textarea,[tabindex="0"]')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=elements[0],last=elements.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('.modal'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('.modal'))){e.preventDefault();first?.focus();}}});
-window.addEventListener('hashchange',()=>{pendingDepositReceipt=null;showPortalLoader(portalLoaderDuration(route()));closeModal();render();window.scrollTo({top:0});});
+document.addEventListener('keydown',e=>{if(!currentModal)return;if(e.key==='Escape'){if(isLoading&&pendingDeposit?.bank)return;pendingDeposit=null;closeModal();return;}if(e.key==='Tab'){const elements=[...$('.modal').querySelectorAll('button,a,input,select,textarea,[tabindex="0"]')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=elements[0],last=elements.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('.modal'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('.modal'))){e.preventDefault();first?.focus();}}});
+window.addEventListener('hashchange',()=>{pendingDeposit=null;showPortalLoader(portalLoaderDuration(route()));closeModal();render();window.scrollTo({top:0});});
 function preloadSplashLogin(){
  if(!location.hash)history.replaceState(null,'','#/login');
  if(route()!=='login')return false;

@@ -2,7 +2,8 @@
 namespace Tests\Feature;
 use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\{Hash, Notification};
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\{Hash, Notification, Storage};
 use Illuminate\Support\Str;
 use Tests\TestCase;
 class PortalTest extends TestCase
@@ -12,6 +13,7 @@ class PortalTest extends TestCase
     {
         parent::setUp();
         config(['portal.financial_operations_enabled' => true, 'portal.registration_enabled' => true, 'portal.deposit_qr_demo_mode' => false]);
+        Storage::fake('local');
     }
     private function member(): User
     {
@@ -26,7 +28,13 @@ class PortalTest extends TestCase
             'type' => $type, 'amount' => $amount, 'plan' => $plan,
             'request_id' => $requestId,
         ];
-        if ($type === 'deposit') { $payload['payment_method'] = 'bpi'; }
+        if ($type === 'deposit') {
+            $payload['payment_method'] = 'bpi';
+            $payload['receipt'] = UploadedFile::fake()->createWithContent(
+                'receipt.png',
+                base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lGkAAAAASUVORK5CYII=')
+            );
+        }
         if ($type === 'withdraw' && auth()->check()) {
             $account = WithdrawalAccount::create([
                 'user_id' => auth()->id(),
@@ -37,7 +45,9 @@ class PortalTest extends TestCase
             ]);
             $payload['withdrawal_account_id'] = $account->id;
         }
-        $response = $this->postJson('/portal/transactions', $payload);
+        $response = $type === 'deposit'
+            ? $this->post('/portal/transactions', $payload, ['Accept' => 'application/json'])
+            : $this->postJson('/portal/transactions', $payload);
         // Ledger verification includes admin approval; separate tests verify pending states and permissions.
         if ($response->status() === 200 && in_array($type, ['deposit', 'withdraw'], true)) {
             $record = WalletRequest::where('user_id', auth()->id())->where('request_id', $requestId)->firstOrFail();

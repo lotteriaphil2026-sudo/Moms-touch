@@ -4,23 +4,26 @@ use App\Jobs\SendWebPushNotification;
 use App\Models\{InvestmentAllocation, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\{Hash, Queue};
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\{Hash, Queue, Storage};
 use Illuminate\Support\Str;
 use Tests\TestCase;
 class AdminWorkflowTest extends TestCase
 {
  use RefreshDatabase;
- protected function setUp(): void { parent::setUp();config(['portal.financial_operations_enabled'=>true,'portal.registration_enabled'=>true,'portal.deposit_qr_demo_mode'=>false]); }
+ protected function setUp(): void { parent::setUp();config(['portal.financial_operations_enabled'=>true,'portal.registration_enabled'=>true,'portal.deposit_qr_demo_mode'=>false]);Storage::fake('local'); }
  private function member(bool $admin=false,string $funds='0'): User {
   $u=User::factory()->create();$u->forceFill(['is_admin'=>$admin])->save();Wallet::create(['user_id'=>$u->id]);
   if($funds!=='0')app(WalletService::class)->transact($u,'deposit',$funds,null,(string)Str::uuid());return $u;
  }
  private function walletRequest(User $u,string $type,string $amount,?string $id=null): WalletRequest {$account=$type==='withdraw'?WithdrawalAccount::create(['user_id'=>$u->id,'type'=>'bank','provider'=>'BPI','account_holder'=>$u->name,'account_number'=>'1234567890']):null;return app(WalletRequestService::class)->submit($u,$type,$amount,$id??(string)Str::uuid(),'Member request',null,$account);}
  private function review(WalletRequest $r,string $decision='approve'){return $this->postJson('/portal/admin/requests/'.$r->id.'/review',['decision'=>$decision,'note'=>'Reviewed and checked']);}
+ private function submitDeposit(array $payload){return $this->post('/portal/transactions',[...$payload,'receipt'=>$this->receiptUpload()],['Accept'=>'application/json']);}
+ private function receiptUpload(): UploadedFile{return UploadedFile::fake()->createWithContent('receipt.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lGkAAAAASUVORK5CYII='));}
  private function send(User $u,string $kind,array $data=[]){return $this->postJson('/portal/admin/users/'.$u->id.'/'.$kind,[...['amount'=>'5000.25','note'=>'Member credit','request_id'=>(string)Str::uuid()],...$data]);}
  public function test_guests_and_members_cannot_use_any_admin_endpoint(): void {
   $u=$this->member();$r=$this->walletRequest($u,'deposit','5000');
-  $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/requests','/portal/admin/audit'];
+  $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/receipt-logs','/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
   $this->postJson('/portal/admin/users/'.$u->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('x',32),'request_id'=>(string)Str::uuid()])->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
@@ -38,15 +41,15 @@ class AdminWorkflowTest extends TestCase
  public function test_members_see_only_their_own_wallet_requests_and_cannot_choose_another_owner(): void {
   $first=$this->member();$second=$this->member();$this->walletRequest($first,'deposit','5000');$this->actingAs($second);
   $this->getJson('/portal/state')->assertOk()->assertJsonCount(0,'wallet_requests');
-  $this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
+  $this->submitDeposit(['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid(),'user_id'=>$first->id])->assertOk()->assertJsonCount(1,'wallet_requests');
   $this->assertSame(1,WalletRequest::where('user_id',$first->id)->count());$this->assertSame(1,WalletRequest::where('user_id',$second->id)->count());
  }
  public function test_demo_deposits_are_excluded_from_admin_review_lists(): void {
   $member=$this->member();$admin=$this->member(true);
   config(['portal.deposit_qr_demo_mode'=>true]);
-  $demo=$this->actingAs($member)->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',true)->json('submitted_request');
+  $demo=$this->actingAs($member)->submitDeposit(['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',true)->json('submitted_request');
   config(['portal.deposit_qr_demo_mode'=>false]);
-  $real=$this->postJson('/portal/transactions',['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',false)->json('submitted_request');
+  $real=$this->submitDeposit(['type'=>'deposit','amount'=>'5000','payment_method'=>'bpi','request_id'=>(string)Str::uuid()])->assertOk()->assertJsonPath('submitted_request.test_only',false)->json('submitted_request');
   $this->actingAs($admin);
   $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.pending_deposits',1)->assertJsonCount(1,'requests')->assertJsonPath('requests.0.id',$real['id']);
   $this->getJson('/portal/admin/requests?status=all')->assertOk()->assertJsonCount(1,'items')->assertJsonPath('items.0.id',$real['id']);
@@ -57,8 +60,8 @@ class AdminWorkflowTest extends TestCase
  public function test_deposit_is_pending_until_approval_and_replays_do_not_duplicate_credit(): void {
   $u=$this->member();$admin=$this->member(true);$id=(string)Str::uuid();$this->actingAs($u);
   $payload=['type'=>'deposit','amount'=>'5000.25','payment_method'=>'bpi','request_id'=>$id];
-  $this->postJson('/portal/transactions',[...$payload,'status'=>'approved','reviewed_by'=>$admin->id])->assertOk()->assertJsonPath('wallet.balance',0)->assertJsonPath('wallet_requests.0.status','pending');
-  $this->postJson('/portal/transactions',$payload)->assertOk();$this->postJson('/portal/transactions',[...$payload,'amount'=>'1001'])->assertUnprocessable();
+  $this->submitDeposit([...$payload,'status'=>'approved','reviewed_by'=>$admin->id])->assertOk()->assertJsonPath('wallet.balance',0)->assertJsonPath('wallet_requests.0.status','pending');
+  $this->submitDeposit($payload)->assertOk();$this->submitDeposit([...$payload,'amount'=>'1001'])->assertUnprocessable();
   $this->assertDatabaseCount('wallet_requests',1);$this->assertDatabaseCount('wallet_transactions',0);$r=WalletRequest::first();
   $this->actingAs($admin);$this->review($r)->assertOk();$this->review($r)->assertOk();$this->review($r,'reject')->assertUnprocessable();
   $this->assertSame(500025,Wallet::where('user_id',$u->id)->first()->balance_cents);$this->assertDatabaseCount('wallet_transactions',1);$this->assertDatabaseCount('admin_actions',1);
