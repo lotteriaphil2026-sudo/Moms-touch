@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 1254 1254" fill="none" role="img" aria-labelledby="burger-title burger-description">
+  <title id="burger-title">Burger notification icon</title>
+  <desc id="burger-description">A burger with an orange top bun, brown outlines and sesame seeds, and a small notification bell clapper below.</desc>
+  <g stroke="#713B18" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+    <path id="bell-clapper" d="M570 891v22a57 57 0 0 0 114 0v-22"/>
+    <path id="bottom-bun" d="M385 779h484c21 0 35 15 35 36 0 44-29 76-72 76H421c-43 0-73-32-73-76 0-21 15-36 37-36Z"/>
+    <rect id="patty" x="343" y="695" width="568" height="84" rx="42"/>
+    <path id="filling-sides" d="M380 639v56m494-56v56"/>
+    <path id="lettuce" d="M377 566 358 603C345 626 357 642 379 633 399 619 417 629 437 642 456 655 474 654 493 639 513 623 529 622 551 638 573 655 593 656 614 640 636 624 652 622 674 638 696 655 714 656 736 640 758 623 775 621 796 637 818 654 837 656 858 640 872 628 884 625 893 632 910 644 907 619 897 603L877 566"/>
+    <path id="top-bun" d="M387 566h479c17 0 26-10 25-28C878 408 763 306 627 306S377 408 361 538c-2 18 8 28 26 28Z" stroke="#EF7C00"/>
+    <path id="sesame-seeds" d="M627 378v29m-118 15 25 26m211-26-25 26"/>
+  </g>
+</svg>
