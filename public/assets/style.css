@@ -393,3 +393,39 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
  .member-dashboard .heading-actions .btn,.member-dashboard .wallet-bottom button,.member-dashboard .banner-copy .btn-dark{transition:none}
  .member-dashboard .heading-actions .btn:not(:disabled):hover,.member-dashboard .wallet-bottom button:not(:disabled):hover,.member-dashboard .banner-copy .btn-dark:not(:disabled):hover{transform:none}
 }
+.member-feature-page .page-heading{margin-bottom:30px}
+.member-feature-page .wallet-wide,.member-feature-page .account-grid,.member-feature-page .franchise-layout{gap:26px;margin-bottom:30px}
+.member-feature-page .earning-plans,.member-feature-page .events-grid{gap:22px;margin-bottom:30px}
+.member-feature-page .franchise-application-column{display:grid;align-content:start;gap:18px}
+.member-feature-page .panel,.member-feature-page .profile-panel,.member-feature-page .wallet-detail,.member-feature-page .earning-plan,.member-feature-page .event-card,.member-feature-page .franchise-hero,.member-feature-page .franchise-steps,.member-feature-page .franchise-signin,.member-feature-page .franchise-success,.member-feature-page .earning-summary,.member-feature-page .rate-note,.member-feature-page .empty-state{border-radius:18px;box-shadow:0 2px 6px rgba(48,43,36,.05),0 12px 28px rgba(48,43,36,.08)}
+.member-feature-page .wallet-card{border-radius:20px;box-shadow:0 3px 8px rgba(18,29,54,.08),0 16px 32px rgba(18,29,54,.16)}
+.member-feature-page .wallet-detail,.member-feature-page .profile-panel{padding:28px}
+.member-feature-page .panel-head{padding:22px 24px 18px}
+.member-feature-page .wallet-wide{align-items:stretch}
+.member-feature-page .transactions{margin-top:24px}
+.member-feature-page .tabs,.member-feature-page .filters{gap:10px;margin-bottom:20px}
+.member-feature-page .tab,.member-feature-page .filter-chip{min-height:42px;border-radius:11px}
+.member-feature-page .tab{padding:10px 16px}
+.member-feature-page .event-card{transition:transform .2s ease,box-shadow .2s ease}
+.member-feature-page .event-card:hover{transform:translateY(-3px);box-shadow:0 5px 10px rgba(48,43,36,.05),0 16px 30px rgba(48,43,36,.12)}
+.member-feature-page .earning-plan{transition:transform .2s ease,box-shadow .2s ease}
+.member-feature-page .earning-plan:hover{transform:translateY(-3px);box-shadow:0 5px 10px rgba(48,43,36,.05),0 16px 30px rgba(48,43,36,.12)}
+.member-feature-page .franchise-steps{padding:27px 24px 20px;background:#fff;border:1px solid var(--line)}
+.member-feature-page .franchise-note,.member-feature-page .franchise-success{border-radius:13px}
+.member-feature-page .franchise-submit{margin-top:12px}
+.member-feature-page .btn,.member-feature-page .wallet-bottom button{min-height:44px;border-radius:11px;box-shadow:0 3px 0 rgba(138,96,10,.16),0 8px 16px rgba(48,43,36,.12);transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease}
+.member-feature-page .btn:not(:disabled):hover,.member-feature-page .wallet-bottom button:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(138,96,10,.14),0 12px 20px rgba(48,43,36,.15)}
+.member-feature-page .btn:not(:disabled):active,.member-feature-page .wallet-bottom button:not(:disabled):active{transform:translateY(1px);box-shadow:0 1px 2px rgba(48,43,36,.12)}
+.member-feature-page .btn:focus-visible,.member-feature-page .wallet-bottom button:focus-visible,.member-feature-page .tab:focus-visible,.member-feature-page .filter-chip:focus-visible{outline:3px solid rgba(224,150,35,.38);outline-offset:3px;box-shadow:none}
+@media(max-width:600px){
+ .member-feature-page .page-heading{margin-bottom:22px}
+ .member-feature-page .wallet-wide,.member-feature-page .account-grid,.member-feature-page .franchise-layout{gap:17px;margin-bottom:23px}
+ .member-feature-page .earning-plans,.member-feature-page .events-grid{gap:16px;margin-bottom:23px}
+ .member-feature-page .wallet-detail,.member-feature-page .profile-panel,.member-feature-page .franchise-steps{padding:21px 18px}
+ .member-feature-page .panel-head{padding:18px 17px 14px}
+ .member-feature-page .tabs,.member-feature-page .filters{gap:8px;margin-bottom:16px}
+}
+@media(prefers-reduced-motion:reduce){
+ .member-feature-page .event-card,.member-feature-page .earning-plan,.member-feature-page .btn,.member-feature-page .wallet-bottom button{transition:none}
+ .member-feature-page .event-card:hover,.member-feature-page .earning-plan:hover,.member-feature-page .btn:not(:disabled):hover,.member-feature-page .wallet-bottom button:not(:disabled):hover{transform:none}
+}
