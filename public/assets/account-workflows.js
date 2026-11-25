@@ -25,14 +25,15 @@ document.addEventListener('click',e=>{if(e.target.closest('[data-action="logout"
 document.addEventListener('click',async e=>{
  const button=e.target.closest('[data-action="copy-referral"],[data-action="share-referral"]');
  if(!button)return;
- const link=document.getElementById('referral-link')?.value;
+ const code=button.dataset.referralCode?.trim();
+ const link=code?referralUrl(code):document.getElementById('referral-link')?.value;
  if(!link){toast('Your referral link is not available.');return;}
  try{
   if(button.dataset.action==='share-referral'&&navigator.share){
    try{await navigator.share({title:'Mom’s Touch member portal',text:'Join Mom’s Touch using my referral link.',url:link});return;}
    catch(error){if(error?.name==='AbortError')return;}
   }
-  if(!navigator.clipboard?.writeText)throw new Error('Clipboard access is unavailable. Select and copy the referral link.');
+  if(!navigator.clipboard?.writeText)throw new Error('Clipboard access is unavailable in this browser.');
   await navigator.clipboard.writeText(link);
   toast('Referral link copied.');
  }catch(error){toast(error instanceof Error?error.message:'Unable to share the referral link.');}
