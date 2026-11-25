@@ -429,3 +429,15 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
  .member-feature-page .event-card,.member-feature-page .earning-plan,.member-feature-page .btn,.member-feature-page .wallet-bottom button{transition:none}
  .member-feature-page .event-card:hover,.member-feature-page .earning-plan:hover,.member-feature-page .btn:not(:disabled):hover,.member-feature-page .wallet-bottom button:not(:disabled):hover{transform:none}
 }
+.bottom-nav{left:50%;right:auto;bottom:calc(10px + env(safe-area-inset-bottom));width:min(760px,calc(100% - 24px));max-width:760px;padding:7px;border:1px solid rgba(238,237,231,.95);border-radius:24px;background:rgba(255,254,251,.94);box-shadow:0 3px 8px rgba(48,43,36,.06),0 12px 28px rgba(48,43,36,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transform:translateX(-50%)}
+.bottom-nav a{position:relative;flex:1;min-width:0;min-height:50px;justify-content:center;gap:5px;padding:6px 3px;border-radius:16px;font-size:9px;transition:background-color .18s ease,color .18s ease,transform .18s ease}
+.bottom-nav svg{width:21px;height:21px}
+.bottom-nav a.active{border-radius:16px;background:#fff3d8;color:#ad7613}
+.bottom-nav a.active:before{display:none}
+.bottom-nav a:not(.active):hover{background:rgba(244,173,25,.08);color:#756b5a}
+.bottom-nav a:active{transform:scale(.96)}
+.bottom-nav a:focus-visible{outline:3px solid rgba(224,150,35,.4);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){
+ .bottom-nav a{transition:none}
+ .bottom-nav a:active{transform:none}
+}
