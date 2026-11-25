@@ -136,7 +136,7 @@ class AdminWorkflowTest extends TestCase
   $this->getJson('/portal/admin/users/'.$u->id)->assertOk()->assertJsonPath('user.id',$u->id)->assertJsonMissingPath('user.password')->assertJsonMissingPath('user.remember_token')->assertJsonStructure(['wallet','investments','transactions','wallet_requests','franchise_applications']);
   $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.members',1);$this->getJson('/portal/admin/audit')->assertOk()->assertJsonCount(0,'items');
  }
- public function test_admin_classification_requires_the_configured_secret_hides_dummy_from_directory_and_preserves_referrals(): void {
+ public function test_admin_classification_requires_the_configured_secret_keeps_dummy_in_directory_and_preserves_referrals(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);$requestId=(string)Str::uuid();
   config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);
   $this->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('w',48),'request_id'=>$requestId])->assertForbidden();
@@ -144,8 +144,12 @@ class AdminWorkflowTest extends TestCase
   $this->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('s',48),'request_id'=>$requestId])
    ->assertOk()->assertJsonPath('classification','dummy')->assertJsonPath('is_dummy',true)->assertJsonMissingPath('secret_key');
   $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.members',0);
-  $directory=$this->getJson('/portal/admin/users')->assertOk()->assertJsonPath('total',1)->json('items');
-  $this->assertNotContains($member->id,array_column($directory,'id'));
+  $directoryResponse=$this->getJson('/portal/admin/users')->assertOk()
+   ->assertJsonPath('total',2)
+   ->assertJsonPath('real_total',1);
+  $directory=$directoryResponse->json('items');
+  $this->assertContains($member->id,array_column($directory,'id'));
+  $this->assertTrue(collect($directory)->firstWhere('id',$member->id)['is_dummy']);
   $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.is_dummy',true);
   $this->actingAs($member)->getJson('/portal/state')->assertOk()->assertJsonMissingPath('user.is_dummy')->assertJsonPath('user.referral_code',$member->referral_code);
   $this->postJson('/portal/logout')->assertOk();

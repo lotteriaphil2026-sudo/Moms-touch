@@ -22,7 +22,7 @@ let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIn
 window.PORTAL_BANK_LABELS={landbank:'Landbank',bpi:'BPI',security_bank:'Security Bank'};
 const depositBankLabels=window.PORTAL_BANK_LABELS;
 const depositQrImages={landbank:'/LANDBANK.png',bpi:'/bpi.png',security_bank:'/Security%20Bank.png'};
-const depositBankLogos={landbank:'/assets/landbank-logo.svg',bpi:'/assets/bpi-logo.svg',security_bank:'/assets/security-bank-logo.svg'};
+const depositBankLogos={landbank:'/assets/landbank-logo.svg?v=20261125-bank-logos',bpi:'/assets/bpi-logo.svg?v=20261125-bank-logos',security_bank:'/assets/security-bank-logo.svg?v=20261125-bank-logos'};
 const nav=[['dashboard','grid','Overview'],['wallet','wallet','My wallet'],['investments','trend','Investments'],['events','events','Events & Promotions'],['franchising','store','Franchising'],['menu','burger','Our menu'],['account','user','My account']];
 function route(){let p=location.hash.replace('#/','').split('?')[0];return [...nav.map(n=>n[0]),'login','register','forgot','admin'].includes(p)?p:'login';}
 function showPortalLoader(minimumMs=0){
