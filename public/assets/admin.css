@@ -150,6 +150,10 @@
 .admin-content .admin-member-balances{gap:13px}
 .admin-content .admin-member-balances>div{padding:22px 20px;border-radius:16px;box-shadow:0 2px 6px rgba(48,43,36,.04),0 10px 24px rgba(48,43,36,.07)}
 .admin-content .admin-member-actions{gap:9px}
+.admin-content .admin-member-topline{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.admin-content .admin-member-topline .admin-back{margin:0}
+.admin-content .admin-member-topline .admin-member-actions{justify-content:flex-end}
+.admin-content .admin-member-operations{display:flex;flex-direction:column}
 .admin-content .admin-member-section-tabs{gap:11px;margin:23px 0 17px}
 .admin-content .admin-member-section-button{min-height:54px;padding:14px 19px;border-radius:12px;box-shadow:0 2px 5px rgba(48,43,36,.05);transition:transform .16s ease,box-shadow .16s ease,background-color .16s ease}
 .admin-content .admin-member-section-button:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(48,43,36,.09)}
@@ -189,6 +193,10 @@
   .admin-content .admin-member-plans>article{padding:18px}
   .admin-content .admin-application,.admin-content .admin-referral-panel{padding:20px}
   .admin-mobile-nav a{min-height:48px;font-size:9px}
+}
+@media(max-width:700px){
+  .admin-content .admin-member-topline{align-items:flex-start}
+  .admin-content .admin-member-topline .admin-member-actions{flex:1 1 100%;justify-content:stretch}
 }
 @media(prefers-reduced-motion:reduce){
   .admin-content .admin-stat,.admin-content .admin-quick-links>a,.admin-content .filter-chip,.admin-content .btn,.admin-content .btn-link,.admin-content .admin-member-section-button,.admin-mobile-nav a{transition:none}

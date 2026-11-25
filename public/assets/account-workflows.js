@@ -7,9 +7,9 @@ function memberWalletRequests(){
  const rows=state.wallet_requests||[];
  return `<section class="panel member-requests"><div class="panel-head"><div><h2>Deposit & withdrawal requests</h2><p class="panel-sub">Track admin reviews and the notes for each request.</p></div><span class="neutral-tag">${rows.filter(r=>r.status==='pending').length} PENDING</span></div>${rows.length?`<div class="request-cards">${rows.map(r=>`<article class="member-request"><div><strong>${r.type==='deposit'?'Deposit':'Withdrawal'} · ${cash(r.amount)}</strong><small>${esc(r.reference)} · ${portalDate(r.created_at)}${r.payment_method?` · ${esc(window.PORTAL_BANK_LABELS?.[r.payment_method]||r.payment_method)}`:''}</small>${r.test_only?'<p class="demo-notice">TEST ONLY — this request cannot be approved or credited.</p>':''}${r.review_note?`<p>Review note: ${esc(r.review_note)}</p>`:''}${r.type==='withdraw'&&r.status==='pending'?'<p>This amount is reserved while the admin reviews your request.</p>':''}</div>${statusBadge(r.status)}</article>`).join('')}</div>`:'<p class="workflow-empty">Your requests will appear here after you submit a deposit or withdrawal.</p>'}</section>`;
 }
-function authEntryOptions(forgot){
+function authEntryOptions(){
  if(!native)return '<div class="production-setup-note" role="status"><strong>Your member space is getting ready.</strong><p>Sign-in and registration will open shortly. Please check back soon.</p></div>';
- return forgot?'':'<p class="auth-access-note">Members and administrators use this same secure sign-in form.</p>';
+ return '';
 }
 function finishPortalRender(page){
  state.wallet.held??=0;state.wallet_requests??=[];state.withdrawal_accounts??=[];
