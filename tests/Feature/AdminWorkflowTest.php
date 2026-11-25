@@ -26,8 +26,19 @@ class AdminWorkflowTest extends TestCase
   $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/receipt-logs','/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
   $this->postJson('/portal/admin/users/'.$u->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('x',32),'request_id'=>(string)Str::uuid()])->assertUnauthorized();
+  $this->postJson('/portal/admin/users/'.$u->id.'/special-preview-link')->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
+ }
+ public function test_admin_can_grant_a_special_preview_link_once_and_members_receive_the_permission(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $url='/portal/admin/users/'.$member->id.'/special-preview-link';
+  $this->postJson($url)->assertOk()->assertJsonPath('special_preview_link_enabled',true)->assertJsonPath('message','Special preview link granted.');
+  $this->postJson($url)->assertOk()->assertJsonPath('message','This member already has the special preview link.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'special_preview_link_enabled'=>true]);
+  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'special_preview_link_granted']);
+  $this->assertDatabaseCount('admin_actions',1);
+  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.special_preview_link_enabled',true);
  }
  public function test_registration_and_profile_updates_cannot_elevate_roles(): void {
   $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','phone'=>'+639171234567','date_of_birth'=>'1990-01-01','address'=>'123 Example Street, Makati City','gender'=>'Other','marital_status'=>'Single','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);

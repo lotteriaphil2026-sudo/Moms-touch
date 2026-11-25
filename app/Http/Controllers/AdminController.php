@@ -83,6 +83,38 @@ class AdminController extends Controller
             'is_dummy' => $isDummy,
         ]);
     }
+    public function grantSpecialPreviewLink(Request $request, User $user): JsonResponse
+    {
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member referral links.');
+
+        $granted = DB::transaction(function () use ($request, $user): bool {
+            $member = User::query()->lockForUpdate()->findOrFail($user->id);
+            abort_unless(! $member->is_admin, 422, 'Administrator accounts cannot receive member referral links.');
+            if ($member->special_preview_link_enabled) {
+                return false;
+            }
+
+            $member->forceFill(['special_preview_link_enabled' => true])->save();
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $member->id,
+                'request_id' => (string) Str::uuid(),
+                'request_fingerprint' => hash('sha256', 'special-preview-link|'.$member->id),
+                'action' => 'special_preview_link_granted',
+                'amount_cents' => 0,
+                'note' => 'Granted special referral preview link.',
+                'metadata' => ['preview' => 'seminar'],
+            ]);
+
+            return true;
+        });
+
+        return response()->json([
+            'message' => $granted ? 'Special preview link granted.' : 'This member already has the special preview link.',
+            'special_preview_link_enabled' => true,
+        ]);
+    }
     public function user(User $user, PortalController $portal): JsonResponse
     {
         $payload = $portal->payloadForUser($user);

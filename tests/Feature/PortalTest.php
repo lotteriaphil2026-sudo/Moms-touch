@@ -84,6 +84,18 @@ class PortalTest extends TestCase
             ->assertSee('property="og:url" content="'.url('/').'?ref='.$referralCode.'"', false)
             ->assertSee('name="twitter:title" content="You’re invited to join Mom’s Touch"', false);
     }
+    public function test_special_referral_links_use_the_seminar_social_preview(): void
+    {
+        $referralCode = 'MT-ABC123';
+        $image = url('/Seminar%20room%20with%20refreshed%20Mom%E2%80%99s%20Touch%20banners.png?v=20261125-special-preview');
+        $this->get('/?special_ref='.$referralCode)
+            ->assertOk()
+            ->assertSee('<title>A special Mom’s Touch invitation</title>', false)
+            ->assertSee('property="og:url" content="'.url('/').'?special_ref='.$referralCode.'"', false)
+            ->assertSee('property="og:image" content="'.$image.'"', false)
+            ->assertSee('property="og:image:type" content="image/png"', false)
+            ->assertSee('name="twitter:image" content="'.$image.'"', false);
+    }
     public function test_registration_creates_a_zero_balance_wallet_and_hashes_password(): void
     {
         $this->postJson('/portal/register', [

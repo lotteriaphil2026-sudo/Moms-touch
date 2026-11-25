@@ -38,6 +38,7 @@ Route::prefix('portal')->group(function () {
             Route::get('/users', [AdminController::class, 'users']);
             Route::get('/users/{user}', [AdminController::class, 'user']);
             Route::post('/users/{user}/classification', [AdminController::class, 'classifyUser']);
+            Route::post('/users/{user}/special-preview-link', [AdminController::class, 'grantSpecialPreviewLink']);
             Route::get('/deposit-users', [AdminController::class, 'depositUsers']);
             Route::get('/receipt-logs', [AdminController::class, 'receiptLogs']);
             Route::get('/requests', [AdminController::class, 'requests']);

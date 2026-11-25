@@ -15,7 +15,8 @@ function finishPortalRender(page){
  state.wallet.held??=0;state.wallet_requests??=[];state.withdrawal_accounts??=[];
  if(!native||!window.PORTAL_CONFIG?.financial_operations_enabled){document.querySelectorAll('[data-action="deposit"],[data-action="withdraw"],[data-action="invest"]').forEach(button=>{button.disabled=true;button.title='Wallet operations are temporarily paused.';});}
  if(page==='register'){
-  const referralCode=new URLSearchParams(location.search).get('ref');
+  const searchParams=new URLSearchParams(location.search);
+  const referralCode=searchParams.get('special_ref')||searchParams.get('ref');
   const form=document.getElementById('auth-form');
   if(referralCode&&form){const input=document.createElement('input');input.type='hidden';input.name='referral_code';input.value=referralCode;form.append(input);}
  }
@@ -23,18 +24,19 @@ function finishPortalRender(page){
 }
 document.addEventListener('click',e=>{if(e.target.closest('[data-action="logout"]'))clearAdminCache();},true);
 document.addEventListener('click',async e=>{
- const button=e.target.closest('[data-action="copy-referral"],[data-action="share-referral"]');
+ const button=e.target.closest('[data-action="copy-referral"],[data-action="share-referral"],[data-action="copy-special-referral"],[data-action="share-special-referral"]');
  if(!button)return;
+ const special=button.dataset.action==='copy-special-referral'||button.dataset.action==='share-special-referral';
  const code=button.dataset.referralCode?.trim();
- const link=code?referralUrl(code):document.getElementById('referral-link')?.value;
+ const link=code?(special?specialReferralUrl(code):referralUrl(code)):document.getElementById(special?'special-referral-link':'referral-link')?.value;
  if(!link){toast('Your referral link is not available.');return;}
  try{
-  if(button.dataset.action==='share-referral'&&navigator.share){
-   try{await navigator.share({title:'Mom’s Touch member portal',text:'Join Mom’s Touch using my referral link.',url:link});return;}
+  if((button.dataset.action==='share-referral'||button.dataset.action==='share-special-referral')&&navigator.share){
+   try{await navigator.share({title:special?'A special Mom’s Touch invitation':'Mom’s Touch member portal',text:special?'Share this special Mom’s Touch invitation.':'Join Mom’s Touch using my referral link.',url:link});return;}
    catch(error){if(error?.name==='AbortError')return;}
   }
   if(!navigator.clipboard?.writeText)throw new Error('Clipboard access is unavailable in this browser.');
   await navigator.clipboard.writeText(link);
-  toast('Referral link copied.');
+  toast(special?'Special preview link copied.':'Referral link copied.');
  }catch(error){toast(error instanceof Error?error.message:'Unable to share the referral link.');}
 });
