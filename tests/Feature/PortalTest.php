@@ -73,6 +73,17 @@ class PortalTest extends TestCase
             ->assertSee('name="twitter:card"', false);
         $this->getJson('/portal/state')->assertOk()->assertJsonPath('user', null)->assertJsonPath('wallet.balance', 0);
     }
+    public function test_referral_links_include_social_preview_metadata(): void
+    {
+        $referralCode = 'MT-ABC123';
+        $this->get('/?ref='.$referralCode)
+            ->assertOk()
+            ->assertSee('<title>You’re invited to join Mom’s Touch</title>', false)
+            ->assertSee('property="og:title" content="You’re invited to join Mom’s Touch"', false)
+            ->assertSee('property="og:description" content="Explore the Mom’s Touch Members Club, member updates, events, and more through this referral link."', false)
+            ->assertSee('property="og:url" content="'.url('/').'?ref='.$referralCode.'"', false)
+            ->assertSee('name="twitter:title" content="You’re invited to join Mom’s Touch"', false);
+    }
     public function test_registration_creates_a_zero_balance_wallet_and_hashes_password(): void
     {
         $this->postJson('/portal/register', [
