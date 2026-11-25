@@ -10,6 +10,7 @@
 
 .admin-content .page-heading h1{overflow-wrap:anywhere}.admin-workspace .icon-btn{min-height:40px;min-width:40px}
 @media(max-width:360px){.admin-stats,.admin-member-balances{grid-template-columns:minmax(0,1fr)}.admin-stat{min-height:125px}.admin-stat-dark>strong{font-size:24px}}
+.admin-table .admin-request-total td{background:#fff8e6;border-top:1px solid #e8dec6;color:#695536}
 
 /* Login remains visible while unavailable services cannot collect credentials. */
 .auth-fields{border:0;padding:0;margin:0;min-width:0}
