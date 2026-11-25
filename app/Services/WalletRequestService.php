@@ -65,7 +65,16 @@ class WalletRequestService
             $message = $type === 'deposit'
                 ? 'Your deposit request was submitted for review.'
                 : 'Your withdrawal request was submitted for review.';
-            app(WebPushNotificationService::class)->notify($user->id, $message);
+            $notifications = app(WebPushNotificationService::class);
+            $notifications->notify($user->id, $message);
+            if (! $user->is_dummy) {
+                $requestType = $type === 'deposit' ? 'deposit' : 'withdrawal';
+                $notifications->notifyAdmins(
+                    'A member submitted a new '.$requestType.' request. Sign in to review it.',
+                    $type === 'deposit' ? '/#/admin?tab=deposits' : '/#/admin?tab=withdrawals',
+                    'New '.$requestType.' request'
+                );
+            }
         }
 
         return $request;

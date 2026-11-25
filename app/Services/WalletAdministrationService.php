@@ -64,7 +64,17 @@ class WalletAdministrationService
             ? 'Your '.$details['name'].' plan has been activated on your account. Open Investments to view its terms and daily interest.'
             : 'Funds were credited to your wallet.';
 
-        return app(WebPushNotificationService::class)->notify(
+        $notifications = app(WebPushNotificationService::class);
+        $notifications->notify(
+            $actor->id,
+            $details
+                ? 'A package was assigned to a member. Open the activity log to review the action.'
+                : 'Funds were sent to a member. Open the activity log to review the action.',
+            '/#/admin?tab=audit',
+            $details ? 'Package assigned to member' : 'Funds sent to member'
+        );
+
+        return $notifications->notify(
             $member->id,
             $message,
             $details ? '/#/investments' : '/#/wallet',

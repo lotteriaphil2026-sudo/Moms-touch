@@ -29,6 +29,27 @@ class WebPushNotificationService
         return true;
     }
 
+    public function notifyAdmins(string $message, string $url, string $title): int
+    {
+        if (! $this->isConfigured()) {
+            return 0;
+        }
+
+        $adminIds = PushSubscription::query()
+            ->whereIn('user_id', User::query()->where('is_admin', true)->select('id'))
+            ->distinct()
+            ->pluck('user_id');
+
+        $queued = 0;
+        foreach ($adminIds as $adminId) {
+            if ($this->notify((int) $adminId, $message, $url, $title)) {
+                $queued++;
+            }
+        }
+
+        return $queued;
+    }
+
     public function send(
         int $userId,
         string $message,
