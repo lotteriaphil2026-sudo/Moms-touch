@@ -363,3 +363,33 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 @keyframes investment-choice-spin{to{transform:rotate(360deg)}}
 @keyframes investment-choice-check-in{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.investment-choice-spinner{animation-duration:1.4s}}
+.member-dashboard .page-heading{margin-bottom:28px}
+.member-dashboard .summary-grid{gap:20px;margin-bottom:32px}
+.member-dashboard .wallet-card{min-height:208px;padding:26px 28px;border-radius:20px;box-shadow:0 3px 8px rgba(18,29,54,.08),0 16px 32px rgba(18,29,54,.16)}
+.member-dashboard .stat-card,.member-dashboard .panel,.member-dashboard .feature-banner,.member-dashboard .member-promo{border-radius:18px;box-shadow:0 2px 6px rgba(48,43,36,.05),0 12px 28px rgba(48,43,36,.08)}
+.member-dashboard .stat-card{min-height:158px;padding:25px 24px}
+.member-dashboard .panel-head{padding:22px 24px 18px}
+.member-dashboard .middle-grid{gap:20px;margin-bottom:32px}
+.member-dashboard .section-head{margin-bottom:20px}
+.member-dashboard .dashboard-lower{gap:20px;margin-bottom:32px}
+.member-dashboard .transactions{margin-top:24px}
+.member-dashboard .demo-notice{margin-top:22px}
+.member-dashboard .heading-actions .btn,.member-dashboard .wallet-bottom button,.member-dashboard .banner-copy .btn-dark{border-radius:11px;box-shadow:0 3px 0 rgba(138,96,10,.18),0 8px 16px rgba(48,43,36,.12);transition:transform .18s ease,box-shadow .18s ease,background-color .18s ease}
+.member-dashboard .heading-actions .btn-primary{box-shadow:0 3px 0 #d3940d,0 8px 16px rgba(138,96,10,.2)}
+.member-dashboard .heading-actions .btn:not(:disabled):hover,.member-dashboard .wallet-bottom button:not(:disabled):hover,.member-dashboard .banner-copy .btn-dark:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 5px 0 rgba(138,96,10,.16),0 12px 20px rgba(48,43,36,.15)}
+.member-dashboard .heading-actions .btn-primary:not(:disabled):hover{box-shadow:0 5px 0 #d3940d,0 12px 20px rgba(138,96,10,.22)}
+.member-dashboard .heading-actions .btn:not(:disabled):active,.member-dashboard .wallet-bottom button:not(:disabled):active,.member-dashboard .banner-copy .btn-dark:not(:disabled):active{transform:translateY(1px);box-shadow:0 1px 2px rgba(48,43,36,.12)}
+@media(max-width:600px){
+ .member-dashboard .page-heading{margin-bottom:22px}
+ .member-dashboard .summary-grid{gap:13px;margin-bottom:24px}
+ .member-dashboard .wallet-card{min-height:190px;padding:22px 20px}
+ .member-dashboard .stat-card{min-height:136px;padding:18px 16px}
+ .member-dashboard .panel-head{padding:18px 17px 14px}
+ .member-dashboard .middle-grid,.member-dashboard .dashboard-lower{gap:14px;margin-bottom:24px}
+ .member-dashboard .section-head{margin-bottom:15px}
+ .member-dashboard .transactions{margin-top:20px}
+}
+@media(prefers-reduced-motion:reduce){
+ .member-dashboard .heading-actions .btn,.member-dashboard .wallet-bottom button,.member-dashboard .banner-copy .btn-dark{transition:none}
+ .member-dashboard .heading-actions .btn:not(:disabled):hover,.member-dashboard .wallet-bottom button:not(:disabled):hover,.member-dashboard .banner-copy .btn-dark:not(:disabled):hover{transform:none}
+}
