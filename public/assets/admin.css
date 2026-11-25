@@ -134,6 +134,8 @@
 .admin-content .admin-quick-links>a{border-radius:17px;padding:26px;box-shadow:0 2px 6px rgba(48,43,36,.04),0 12px 28px rgba(48,43,36,.08);transition:transform .18s ease,box-shadow .18s ease}
 .admin-content .admin-quick-links>a:hover{transform:translateY(-2px);box-shadow:0 5px 12px rgba(48,43,36,.06),0 17px 32px rgba(48,43,36,.12)}
 .admin-content .admin-simulation,.admin-content .profile-panel{border-radius:15px;box-shadow:0 2px 6px rgba(48,43,36,.04),0 10px 24px rgba(48,43,36,.07)}
+.admin-content .admin-phone-push-panel{display:none}
+@media(max-width:700px){.admin-content .admin-phone-push-panel{display:block}}
 .admin-content .admin-simulation{padding:16px 19px;margin-bottom:29px}
 .admin-content .admin-table{border-radius:18px;overflow:hidden}
 .admin-content .admin-table th{padding:17px 20px}
