@@ -18,7 +18,7 @@ for(const key of ['mt-preview','mt-admin-preview']){try{sessionStorage.removeIte
 let state=seed();
 state.franchise_applications??=[];
 let splashLoginPending=false,splashPortalReady=false,splashVideoEnded=false,splashTransitionStarted=false;
-let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIndex=events.findIndex(event=>event.id===1),featuredEventPaused=false,featuredEventTimer=null;let portalLoaderHideTimer=null,portalLoaderStartedAt=null,portalLoaderMinimumMs=0;let isLoading=false;let modalReturnFocus=null;let currentModal='';let toastTimer;let pendingDeposit=null;
+let eventTab='ongoing',menuFilter='All',activityFilter='all';let featuredEventIndex=events.findIndex(event=>event.id===1),featuredEventPaused=false,featuredEventTimer=null;let portalLoaderHideTimer=null,portalLoaderVideoWatchdog=null,portalLoaderStartedAt=null,portalLoaderMinimumMs=0;let isLoading=false;let modalReturnFocus=null;let currentModal='';let toastTimer;let pendingDeposit=null;
 window.PORTAL_BANK_LABELS={landbank:'Landbank',bpi:'BPI',security_bank:'Security Bank'};
 const depositBankLabels=window.PORTAL_BANK_LABELS;
 const depositQrImages={landbank:'/LANDBANK.png',bpi:'/bpi.png',security_bank:'/Security%20Bank.png'};
@@ -30,16 +30,28 @@ function showPortalLoader(minimumMs=0){
  if(loader.hidden||loader.classList.contains('is-hiding')||portalLoaderStartedAt===null)portalLoaderStartedAt=performance.now();
  portalLoaderMinimumMs=Math.max(portalLoaderMinimumMs,minimumMs);clearTimeout(portalLoaderHideTimer);loader.hidden=false;loader.setAttribute('aria-hidden','false');loader.classList.remove('is-hiding');
  const video=loader.querySelector('video');
- const fallback=error=>{loader.classList.add('video-fallback');console.warn('Splash video could not play; showing fallback.',error);};
+ const fallback=error=>{
+  if(loader.hidden||loader.classList.contains('video-fallback'))return;
+  loader.classList.add('video-fallback');console.warn('Splash video could not play; showing fallback.',error);
+  clearTimeout(portalLoaderVideoWatchdog);portalLoaderVideoWatchdog=null;hidePortalLoader();
+ };
  if(!video||typeof video.play!=='function'){fallback(new Error('Video playback is unavailable.'));return;}
  video.loop=false;
  if(!video.dataset.fallbackBound){video.addEventListener('error',()=>fallback(video.error));video.dataset.fallbackBound='true';}
- if(!video.dataset.endedBound){video.addEventListener('ended',()=>{splashVideoEnded=true;hidePortalLoader();});video.dataset.endedBound='true';}
+ if(!video.dataset.endedBound){video.addEventListener('ended',()=>{clearTimeout(portalLoaderVideoWatchdog);portalLoaderVideoWatchdog=null;splashVideoEnded=true;hidePortalLoader();});video.dataset.endedBound='true';}
  if(video.ended){video.currentTime=0;splashVideoEnded=false;}
- if(video.paused){try{const playback=video.play();if(playback&&typeof playback.then==='function')playback.then(()=>loader.classList.remove('video-fallback')).catch(fallback);}catch(error){fallback(error);}}
+ if(video.paused){try{const playback=video.play();if(playback&&typeof playback.then==='function')playback.then(()=>{if(!loader.classList.contains('is-transitioning'))loader.classList.remove('video-fallback');}).catch(fallback);}catch(error){fallback(error);}}
+ clearTimeout(portalLoaderVideoWatchdog);
+ const initialTime=video.currentTime;
+ portalLoaderVideoWatchdog=window.setTimeout(()=>{
+  if(loader.hidden||video.ended||loader.classList.contains('video-fallback'))return;
+  if(video.currentTime<=initialTime+.1){fallback(new Error('Splash video did not start.'));return;}
+  portalLoaderVideoWatchdog=window.setTimeout(()=>{if(!loader.hidden&&!video.ended)fallback(new Error('Splash video timed out.'));},8000);
+ },4000);
 }
 function startSplashLoginTransition(loader){
  if(splashTransitionStarted)return;
+ clearTimeout(portalLoaderVideoWatchdog);portalLoaderVideoWatchdog=null;
  const headerLogo=$('#app .auth-story .brand');
  if(!headerLogo)return;
  const logoRect=headerLogo.getBoundingClientRect();
@@ -75,7 +87,7 @@ function hidePortalLoader(page=route()){
  }
  const remaining=portalLoaderMinimumMs-(performance.now()-(portalLoaderStartedAt??performance.now()));
  if(remaining>0){clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>hidePortalLoader(page),remaining);return;}
- portalLoaderMinimumMs=0;loader.classList.add('is-hiding');loader.setAttribute('aria-hidden','true');clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>{loader.hidden=true;loader.querySelector('video')?.pause();portalLoaderStartedAt=null;},280);
+ portalLoaderMinimumMs=0;clearTimeout(portalLoaderVideoWatchdog);portalLoaderVideoWatchdog=null;loader.classList.add('is-hiding');loader.setAttribute('aria-hidden','true');clearTimeout(portalLoaderHideTimer);portalLoaderHideTimer=window.setTimeout(()=>{loader.hidden=true;loader.querySelector('video')?.pause();portalLoaderStartedAt=null;},280);
 }
 function portalLoaderDuration(page){return ['investments','wallet','events','franchising'].includes(page)?3000:0;}
 function go(p){showPortalLoader(portalLoaderDuration(p));if(route()===p){render();}else location.hash='/'+p;}
@@ -367,7 +379,7 @@ function preloadSplashLogin(){
  return true;
 }
 async function init(){
- showPortalLoader(7000);
+ showPortalLoader(2000);
  splashLoginPending=preloadSplashLogin();
  if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}
  splashPortalReady=true;
