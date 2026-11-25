@@ -198,6 +198,12 @@
   .admin-content .admin-member-topline{align-items:flex-start}
   .admin-content .admin-member-topline .admin-member-actions{flex:1 1 100%;justify-content:stretch}
 }
+.admin-content .admin-member-label{flex:1;min-width:0;display:flex;justify-content:center;align-items:center;text-align:center}
+.admin-content .admin-member-label:empty{display:none}
+.admin-content .admin-member-label>span{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:8px 18px;border:1px solid #eadbb8;border-radius:11px;background:#fff9e9;box-shadow:0 2px 6px rgba(48,43,36,.05),0 8px 18px rgba(48,43,36,.08);color:#785d30;font-size:12px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:700px){
+  .admin-content .admin-member-label{flex:1 1 100%;justify-content:flex-start}
+}
 @media(prefers-reduced-motion:reduce){
   .admin-content .admin-stat,.admin-content .admin-quick-links>a,.admin-content .filter-chip,.admin-content .btn,.admin-content .btn-link,.admin-content .admin-member-section-button,.admin-mobile-nav a{transition:none}
   .admin-content .admin-stat:hover,.admin-content .admin-quick-links>a:hover,.admin-content .filter-chip:hover,.admin-content .btn:not(:disabled):hover,.admin-content .admin-member-section-button:hover,.admin-mobile-nav a:active{transform:none}

@@ -8,14 +8,14 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->boolean('special_preview_link_enabled')->default(false);
+            $table->string('referral_preview_type', 16)->default('standard');
         });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('special_preview_link_enabled');
+            $table->dropColumn('referral_preview_type');
         });
     }
 };

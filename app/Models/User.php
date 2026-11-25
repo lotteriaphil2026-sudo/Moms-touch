@@ -15,7 +15,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
-    protected $attributes = ['is_admin' => false, 'is_dummy' => false, 'special_preview_link_enabled' => false];
+    protected $attributes = ['is_admin' => false, 'is_dummy' => false, 'referral_preview_type' => 'standard'];
 
     /**
      * The attributes that are mass assignable.
@@ -57,7 +57,6 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_dummy' => 'boolean',
-            'special_preview_link_enabled' => 'boolean',
         ];
     }
 

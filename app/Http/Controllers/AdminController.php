@@ -28,7 +28,7 @@ class AdminController extends Controller
     public function users(Request $request): JsonResponse
     {
         $input = $request->validate(['search' => ['nullable', 'string', 'max:100'], 'page' => ['nullable', 'integer', 'min:1']]);
-        $query = User::query()->select(['id', 'name', 'email', 'phone', 'is_admin', 'is_dummy', 'created_at']);
+        $query = User::query()->select(['id', 'name', 'email', 'phone', 'is_admin', 'is_dummy', 'admin_label', 'referral_preview_type', 'created_at']);
         if ($term = trim($input['search'] ?? '')) {
             $query->where(fn ($q) => $q->where('name', 'like', '%'.$term.'%')->orWhere('email', 'like', '%'.$term.'%'));
         }
@@ -37,6 +37,8 @@ class AdminController extends Controller
         $wallets = Wallet::whereIn('user_id', $page->getCollection()->pluck('id'))->get()->keyBy('user_id');
         return response()->json(['items' => $page->getCollection()->map(fn ($u) => [
             'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone, 'is_admin' => $u->is_admin, 'is_dummy' => $u->is_dummy,
+            'admin_label' => $u->admin_label,
+            'referral_preview_type' => $u->referral_preview_type,
             'created_at' => $u->created_at->toIso8601String(), 'balance' => $wallets->get($u->id)?->balance_cents ?? 0,
             'invested' => $wallets->get($u->id)?->invested_cents ?? 0, 'held' => $wallets->get($u->id)?->held_cents ?? 0,
         ]), 'page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total(), 'real_total' => $realTotal]);
@@ -83,42 +85,81 @@ class AdminController extends Controller
             'is_dummy' => $isDummy,
         ]);
     }
-    public function grantSpecialPreviewLink(Request $request, User $user): JsonResponse
+    public function assignReferralPreview(Request $request, User $user): JsonResponse
     {
         abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member referral links.');
+        $input = $request->validate(['preview_type' => ['required', Rule::in(['standard', 'special'])]]);
 
-        $granted = DB::transaction(function () use ($request, $user): bool {
+        $changed = DB::transaction(function () use ($request, $user, $input): bool {
             $member = User::query()->lockForUpdate()->findOrFail($user->id);
             abort_unless(! $member->is_admin, 422, 'Administrator accounts cannot receive member referral links.');
-            if ($member->special_preview_link_enabled) {
+            if ($member->referral_preview_type === $input['preview_type']) {
                 return false;
             }
 
-            $member->forceFill(['special_preview_link_enabled' => true])->save();
+            $member->forceFill(['referral_preview_type' => $input['preview_type']])->save();
             AdminAction::create([
                 'reference' => (string) Str::uuid(),
                 'actor_id' => $request->user()->id,
                 'user_id' => $member->id,
                 'request_id' => (string) Str::uuid(),
-                'request_fingerprint' => hash('sha256', 'special-preview-link|'.$member->id),
-                'action' => 'special_preview_link_granted',
+                'request_fingerprint' => hash('sha256', 'referral-preview|'.$member->id.'|'.$input['preview_type']),
+                'action' => 'referral_preview_assigned',
                 'amount_cents' => 0,
-                'note' => 'Granted special referral preview link.',
-                'metadata' => ['preview' => 'seminar'],
+                'note' => 'Assigned the '.($input['preview_type'] === 'special' ? 'special seminar' : 'standard').' referral preview.',
+                'metadata' => ['preview_type' => $input['preview_type']],
             ]);
 
             return true;
         });
 
         return response()->json([
-            'message' => $granted ? 'Special preview link granted.' : 'This member already has the special preview link.',
-            'special_preview_link_enabled' => true,
+            'message' => $changed
+                ? ($input['preview_type'] === 'special' ? 'Special preview link assigned.' : 'Standard referral preview assigned.')
+                : 'This member already uses that referral preview.',
+            'referral_preview_type' => $input['preview_type'],
+        ]);
+    }
+    public function updateMemberLabel(Request $request, User $user): JsonResponse
+    {
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member labels.');
+        $input = $request->validate(['label' => ['present', 'nullable', 'string', 'max:80']]);
+        $label = isset($input['label']) ? trim($input['label']) : null;
+        $label = $label === '' ? null : $label;
+
+        $changed = DB::transaction(function () use ($request, $user, $label): bool {
+            $member = User::query()->lockForUpdate()->findOrFail($user->id);
+            abort_unless(! $member->is_admin, 422, 'Administrator accounts cannot receive member labels.');
+            if ($member->admin_label === $label) {
+                return false;
+            }
+
+            $member->forceFill(['admin_label' => $label])->save();
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $member->id,
+                'request_id' => (string) Str::uuid(),
+                'request_fingerprint' => hash('sha256', 'member-label|'.$member->id.'|'.($label ?? '')),
+                'action' => 'member_label_updated',
+                'amount_cents' => 0,
+                'note' => $label === null ? 'Removed member label.' : 'Updated member label.',
+                'metadata' => ['label' => $label],
+            ]);
+
+            return true;
+        });
+
+        return response()->json([
+            'message' => $changed ? ($label === null ? 'Member label removed.' : 'Member label updated.') : 'Member label is unchanged.',
+            'admin_label' => $label,
         ]);
     }
     public function user(User $user, PortalController $portal): JsonResponse
     {
         $payload = $portal->payloadForUser($user);
         $payload['user']['is_dummy'] = $user->is_dummy;
+        $payload['user']['admin_label'] = $user->admin_label;
         $payload['wallet_requests'] = WalletRequest::where('user_id', $user->id)
             ->where('test_only', false)
             ->latest('id')

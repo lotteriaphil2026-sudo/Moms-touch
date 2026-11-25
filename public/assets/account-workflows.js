@@ -24,14 +24,14 @@ function finishPortalRender(page){
 }
 document.addEventListener('click',e=>{if(e.target.closest('[data-action="logout"]'))clearAdminCache();},true);
 document.addEventListener('click',async e=>{
- const button=e.target.closest('[data-action="copy-referral"],[data-action="share-referral"],[data-action="copy-special-referral"],[data-action="share-special-referral"]');
+ const button=e.target.closest('[data-action="copy-referral"],[data-action="share-referral"]');
  if(!button)return;
- const special=button.dataset.action==='copy-special-referral'||button.dataset.action==='share-special-referral';
+ const special=(button.dataset.previewType||state.user?.referral_preview_type)==='special';
  const code=button.dataset.referralCode?.trim();
- const link=code?(special?specialReferralUrl(code):referralUrl(code)):document.getElementById(special?'special-referral-link':'referral-link')?.value;
+ const link=code?(special?specialReferralUrl(code):referralUrl(code)):document.getElementById('referral-link')?.value;
  if(!link){toast('Your referral link is not available.');return;}
  try{
-  if((button.dataset.action==='share-referral'||button.dataset.action==='share-special-referral')&&navigator.share){
+  if(button.dataset.action==='share-referral'&&navigator.share){
    try{await navigator.share({title:special?'A special Mom’s Touch invitation':'Mom’s Touch member portal',text:special?'Share this special Mom’s Touch invitation.':'Join Mom’s Touch using my referral link.',url:link});return;}
    catch(error){if(error?.name==='AbortError')return;}
   }

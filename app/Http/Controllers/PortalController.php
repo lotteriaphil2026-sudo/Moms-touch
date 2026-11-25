@@ -31,7 +31,7 @@ class PortalController extends Controller
                 'date_of_birth' => $user->date_of_birth?->format('Y-m-d'), 'address' => $user->address,
                 'gender' => $user->gender, 'marital_status' => $user->marital_status,
                 'is_admin' => $user->is_admin, 'is_dummy' => $user->is_dummy,
-                'special_preview_link_enabled' => $user->special_preview_link_enabled,
+                'referral_preview_type' => $user->referral_preview_type,
                 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
                 'referrer' => $referrerData,

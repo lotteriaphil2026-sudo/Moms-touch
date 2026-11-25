@@ -26,19 +26,40 @@ class AdminWorkflowTest extends TestCase
   $urls=['/portal/admin/overview','/portal/admin/users','/portal/admin/users/'.$u->id,'/portal/admin/deposit-users','/portal/admin/receipt-logs','/portal/admin/requests','/portal/admin/audit'];
   foreach($urls as $url)$this->getJson($url)->assertUnauthorized();$this->review($r)->assertUnauthorized();$this->send($u,'funds')->assertUnauthorized();
   $this->postJson('/portal/admin/users/'.$u->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('x',32),'request_id'=>(string)Str::uuid()])->assertUnauthorized();
-  $this->postJson('/portal/admin/users/'.$u->id.'/special-preview-link')->assertUnauthorized();
+  $this->postJson('/portal/admin/users/'.$u->id.'/referral-preview',['preview_type'=>'special'])->assertUnauthorized();
+  $this->postJson('/portal/admin/users/'.$u->id.'/label',['label'=>'VIP'])->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
+  $this->postJson('/portal/admin/users/'.$u->id.'/label',['label'=>'VIP'])->assertForbidden();
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
  }
- public function test_admin_can_grant_a_special_preview_link_once_and_members_receive_the_permission(): void {
-  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
-  $url='/portal/admin/users/'.$member->id.'/special-preview-link';
-  $this->postJson($url)->assertOk()->assertJsonPath('special_preview_link_enabled',true)->assertJsonPath('message','Special preview link granted.');
-  $this->postJson($url)->assertOk()->assertJsonPath('message','This member already has the special preview link.');
-  $this->assertDatabaseHas('users',['id'=>$member->id,'special_preview_link_enabled'=>true]);
-  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'special_preview_link_granted']);
+ public function test_admin_assigns_one_referral_preview_type_per_member(): void {
+  $member=$this->member();$referralCode=$member->referral_code;$admin=$this->member(true);$this->actingAs($admin);
+  $url='/portal/admin/users/'.$member->id.'/referral-preview';
+  $this->postJson($url,['preview_type'=>'special'])->assertOk()->assertJsonPath('referral_preview_type','special')->assertJsonPath('message','Special preview link assigned.');
+  $this->postJson($url,['preview_type'=>'special'])->assertOk()->assertJsonPath('message','This member already uses that referral preview.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'referral_code'=>$referralCode,'referral_preview_type'=>'special']);
+  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'referral_preview_assigned']);
   $this->assertDatabaseCount('admin_actions',1);
-  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.special_preview_link_enabled',true);
+  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.referral_code',$referralCode)->assertJsonPath('user.referral_preview_type','special');
+  $this->actingAs($admin);
+  $this->postJson($url,['preview_type'=>'standard'])->assertOk()->assertJsonPath('referral_preview_type','standard')->assertJsonPath('message','Standard referral preview assigned.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'referral_code'=>$referralCode,'referral_preview_type'=>'standard']);
+  $this->assertDatabaseCount('admin_actions',2);
+  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.referral_preview_type','standard');
+ }
+ public function test_admin_can_set_and_clear_a_member_label(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $url='/portal/admin/users/'.$member->id.'/label';
+  $this->postJson($url,['label'=>'  VIP Member  '])->assertOk()->assertJsonPath('admin_label','VIP Member')->assertJsonPath('message','Member label updated.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'admin_label'=>'VIP Member']);
+  $this->postJson($url,['label'=>'VIP Member'])->assertOk()->assertJsonPath('message','Member label is unchanged.');
+  $this->getJson('/portal/admin/users?search='.urlencode($member->email))->assertOk()->assertJsonPath('items.0.admin_label','VIP Member');
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.admin_label','VIP Member');
+  $this->assertDatabaseCount('admin_actions',1);
+  $this->postJson($url,['label'=>null])->assertOk()->assertJsonPath('admin_label',null)->assertJsonPath('message','Member label removed.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'admin_label'=>null]);
+  $this->assertDatabaseCount('admin_actions',2);
+  $this->postJson('/portal/admin/users/'.$admin->id.'/label',['label'=>'Admin'])->assertUnprocessable();
  }
  public function test_registration_and_profile_updates_cannot_elevate_roles(): void {
   $this->postJson('/portal/register',['name'=>'Member','email'=>'member@example.test','phone'=>'+639171234567','date_of_birth'=>'1990-01-01','address'=>'123 Example Street, Makati City','gender'=>'Other','marital_status'=>'Single','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','is_admin'=>true,'role'=>'admin'])->assertOk()->assertJsonPath('user.is_admin',false);
