@@ -483,6 +483,7 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
  .auth-content .btn{min-height:49px}
  .auth-foot{margin-top:21px}
 }
+.google-onboarding-note{margin:0 0 18px;padding:12px 14px;border:1px solid #f0dfb8;border-radius:10px;background:#fff9eb;color:#75603b;font-size:12px}
 @media(prefers-reduced-motion:reduce){
  .auth-content .field input,.auth-content .btn,.auth-back{transition:none}
  .auth-content .btn:not(:disabled):hover,.auth-content .btn:not(:disabled):active{transform:none}
@@ -500,3 +501,11 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 .top-actions .icon-btn .notification-burger-icon{display:block;width:63px;height:63px;object-fit:contain}
 .franchise-fields{grid-template-columns:1fr;gap:0}
 .franchise-fields .field-full{grid-column:auto}
+.google-login-card{position:fixed;z-index:25;left:50%;bottom:0;width:min(100%,420px);padding:24px 24px calc(20px + env(safe-area-inset-bottom));display:flex;justify-content:center;background:#f7b928;border-radius:16px 16px 0 0;box-shadow:0 -8px 24px rgba(71,55,41,.12);opacity:0;visibility:hidden;transform:translate(-50%,100%);transition:transform 650ms cubic-bezier(.2,.7,.25,1),opacity 500ms ease,visibility 0s linear 650ms}
+.google-login-card.is-visible{opacity:1;visibility:visible;transform:translate(-50%,0);transition:transform 650ms cubic-bezier(.2,.7,.25,1),opacity 500ms ease,visibility 0s}
+.google-login-button{width:min(100%,280px);min-height:50px;padding:10px 20px;display:flex;align-items:center;justify-content:center;gap:12px;border-radius:14px;background:#fff;color:#3c3833;font-size:14px;font-weight:650;box-shadow:0 3px 8px rgba(48,43,36,.12);transition:transform .18s ease,box-shadow .18s ease}
+.google-login-button svg{width:26px;height:26px}
+.google-login-button:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(48,43,36,.16)}
+.google-login-button:active{transform:translateY(1px)}
+.google-login-button:focus-visible{outline:3px solid rgba(49,64,95,.5);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.google-login-card,.google-login-button{transition:none}}

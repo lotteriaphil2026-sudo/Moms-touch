@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, PortalController, PushSubscriptionController, WithdrawalAccountController};
+use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, GoogleAuthController, PortalController, PushSubscriptionController, WithdrawalAccountController};
 use App\Http\Middleware\EnsureAdministrator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -17,9 +17,15 @@ Route::get('/register', function (\Illuminate\Http\Request $request) {
 Route::get('/forgot-password', fn () => redirect('/#/forgot'))->name('password.request');
 Route::get('/reset-password/{token}', fn (string $token) => view('reset-password', ['token' => $token]))->middleware('guest')->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'reset'])->middleware(['guest', 'throttle:6,1'])->name('password.update');
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->middleware('throttle:10,1')->name('google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->middleware('throttle:10,1')->name('google.callback');
 
 Route::prefix('portal')->group(function () {
     Route::get('/state', [PortalController::class, 'state']);
+    Route::middleware('guest')->group(function () {
+        Route::get('/google-onboarding', [GoogleAuthController::class, 'onboarding'])->middleware('throttle:10,1');
+        Route::post('/google-register', [GoogleAuthController::class, 'register'])->middleware('throttle:5,1');
+    });
     Route::post('/login', [AuthController::class, 'login'])->middleware(['guest', 'throttle:portal-login']);
     Route::post('/register', [AuthController::class, 'register'])->middleware(['guest', 'throttle:5,1']);
     Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware(['guest', 'throttle:5,1']);

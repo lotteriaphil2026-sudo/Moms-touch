@@ -25,6 +25,8 @@ Use PHP 8.4+, Composer 2, and Laravel’s PHP extensions, including PDO MySQL or
 
 2. Set the actual HTTPS `APP_URL`, database credentials, SMTP provider/sender, and secure cookie settings in `.env`. Keep `APP_ENV=production`, `APP_DEBUG=false`, `SESSION_ENCRYPT=true`, `SESSION_SECURE_COOKIE=true`, and `SESSION_HTTP_ONLY=true`. The template uses server-side database sessions and cache. Keep `.env` private and out of source control. If TLS terminates at a proxy, configure only the host’s trusted proxy addresses in `bootstrap/app.php`.
 
+   To enable Google sign-in, create a Google OAuth 2.0 **Web application** client. Add the exact HTTPS callback URL (`https://your-domain/auth/google/callback`) as an authorized redirect URI, then set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` in `.env`. Keep the client secret private. Google sign-in is hidden until both credentials are configured. Existing members are matched by Google’s verified email; new members complete the regular profile fields and provide a member referral code before an account and wallet are created. Google signup remains available even when password-based registration is closed.
+
 3. For a **new installation with an empty APP_KEY only**, generate the key once:
 
    ```bash
