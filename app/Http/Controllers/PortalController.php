@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
-use App\Services\{InterestAccrualService, WalletRequestService, WalletService};
+use App\Services\{HomeScreenBonusService, InterestAccrualService, WalletRequestService, WalletService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -35,6 +35,7 @@ class PortalController extends Controller
                 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
                 'referrer' => $referrerData,
+                'home_screen_bonus_claimed' => app(HomeScreenBonusService::class)->hasClaimed($user),
             ],
             'wallet' => [
                 'balance' => $wallet->balance_cents, 'held' => $wallet->held_cents,

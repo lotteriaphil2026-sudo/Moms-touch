@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, GoogleAuthController, PortalController, PushSubscriptionController, WithdrawalAccountController};
+use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, GoogleAuthController, PortalController, PromotionController, PushSubscriptionController, WithdrawalAccountController};
 use App\Http\Middleware\EnsureAdministrator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -30,6 +30,7 @@ Route::prefix('portal')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware(['guest', 'throttle:5,1']);
     Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware(['guest', 'throttle:5,1']);
     Route::middleware('auth')->group(function () {
+        Route::post('/promotions/home-screen-bonus/claim', [PromotionController::class, 'claimHomeScreenBonus'])->middleware('throttle:3,1');
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [PortalController::class, 'profile'])->middleware('throttle:20,1');
         Route::post('/notifications/read-all', [PortalController::class, 'markNotificationsRead'])->middleware('throttle:10,1');
