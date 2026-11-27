@@ -1,0 +1,18 @@
+{
+  "name": "Mom’s Touch Member Portal",
+  "short_name": "Mom’s Touch",
+  "description": "Your Mom’s Touch member space.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f8f5",
+  "theme_color": "#f4ad19",
+  "icons": [
+    {
+      "src": "/unnamed.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

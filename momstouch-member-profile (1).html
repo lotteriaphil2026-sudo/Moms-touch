@@ -1,0 +1,1484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Mom’s Touch administration — member profile and account overview.">
+  <title>Member profile · Mom’s Touch</title>
+  <style>
+    :root {
+      --orange: #e07a00;
+      --orange-hover: #c46b00;
+      --orange-soft: #fff5e6;
+      --orange-muted: #f3e4cc;
+      --brown: #3a281f;
+      --ink: #1a1410;
+      --muted: #6a645e;
+      --muted-light: #8c857d;
+      --canvas: #f3f4f6;
+      --surface: #ffffff;
+      --line: #e6e4e1;
+      --line-strong: #d8d4cf;
+      --sidebar-width: 200px;
+      --radius: 10px;
+      --radius-sm: 7px;
+      /* Corporate elevation: tight, low-opacity, almost monochrome */
+      --shadow-xs: 0 1px 1px rgba(26, 20, 16, 0.04);
+      --shadow-sm: 0 1px 2px rgba(26, 20, 16, 0.05), 0 0 0 1px rgba(26, 20, 16, 0.02);
+      --shadow-md: 0 2px 6px rgba(26, 20, 16, 0.06), 0 1px 2px rgba(26, 20, 16, 0.04);
+      --shadow-lg: 0 8px 24px rgba(26, 20, 16, 0.08), 0 2px 6px rgba(26, 20, 16, 0.04);
+      --shadow-focus: 0 0 0 3px rgba(224, 122, 0, 0.22);
+      --transition: 140ms cubic-bezier(0.25, 0.1, 0.25, 1);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+      font-synthesis: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-size: 13.5px;
+      line-height: 1.5;
+      letter-spacing: -0.011em;
+      font-feature-settings: "cv11", "ss01";
+    }
+    button, input, select, textarea { font: inherit; }
+    button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+    button, a { touch-action: manipulation; }
+    button { cursor: pointer; color: inherit; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    a { color: inherit; text-decoration: none; }
+    button:focus-visible,
+    a:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex="0"]:focus-visible {
+      outline: none;
+      box-shadow: var(--shadow-focus);
+    }
+    [hidden] { display: none !important; }
+    h1, h2, h3, p { margin: 0; }
+    svg { flex: 0 0 auto; }
+    .icon {
+      width: 20px;
+      height: 20px;
+      display: inline-block;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vertical-align: middle;
+    }
+    .icon.small { width: 16px; height: 16px; }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+    /* Skip link */
+    .skip-link {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      z-index: 100;
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      background: var(--brown);
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      transform: translateY(-160%);
+      transition: transform var(--transition);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 30;
+      width: var(--sidebar-width);
+      display: flex;
+      flex-direction: column;
+      padding: 20px 14px;
+      border-right: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: 1px 0 0 rgba(31, 22, 18, 0.02);
+    }
+    .brand { display: block; padding: 0 10px 4px; }
+    .wordmark {
+      display: block;
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.7px;
+      white-space: nowrap;
+      line-height: 1.2;
+      color: var(--brown);
+    }
+    .wordmark span { color: var(--orange); }
+    .brand-caption {
+      display: block;
+      margin-top: 5px;
+      font-size: 9px;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--muted-light);
+    }
+    .nav-section-label {
+      margin: 32px 0 8px;
+      padding: 0 10px;
+      font-size: 9.5px;
+      font-weight: 600;
+      letter-spacing: 0.7px;
+      text-transform: uppercase;
+      color: var(--muted-light);
+      white-space: nowrap;
+    }
+    .primary-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 38px;
+      width: 100%;
+      padding: 7px 11px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: none;
+      text-align: left;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #4a433e;
+      letter-spacing: -0.01em;
+      transition: background var(--transition), color var(--transition);
+    }
+    .nav-link span { white-space: nowrap; }
+    .nav-link .icon {
+      width: 18px;
+      height: 18px;
+      color: #7a736c;
+      transition: color var(--transition);
+    }
+    .nav-link:hover {
+      background: #f7f6f5;
+      color: var(--ink);
+    }
+    .nav-link:hover .icon { color: #5c554f; }
+    .nav-link.active {
+      background: var(--orange-soft);
+      color: #7a3f08;
+      font-weight: 600;
+    }
+    .nav-link.active .icon { color: var(--orange); }
+    .sidebar-bottom {
+      margin: auto 4px 0;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+    .admin-profile {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 0 4px 14px;
+    }
+    .admin-avatar {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #faf0e4, #f5e4d0);
+      color: var(--brown);
+      box-shadow: inset 0 0 0 1px rgba(73, 49, 36, 0.06);
+    }
+    .admin-avatar .icon { width: 18px; height: 18px; }
+    .admin-profile strong {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .admin-profile small {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 1px;
+      letter-spacing: -0.005em;
+    }
+    .signout {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px;
+      border: 0;
+      background: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: #5c554f;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition), color var(--transition);
+    }
+    .signout:hover {
+      background: #f7f6f5;
+      color: var(--ink);
+    }
+    .signout .icon {
+      width: 18px;
+      height: 18px;
+      color: #7a736c;
+    }
+
+    /* App shell */
+    .app-shell {
+      margin-left: var(--sidebar-width);
+      min-height: 100dvh;
+      background: var(--canvas);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      height: 50px;
+      padding: 0 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      box-shadow: var(--shadow-xs);
+    }
+    .breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: -0.005em;
+    }
+    .breadcrumbs li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .breadcrumbs .icon {
+      width: 11px;
+      height: 11px;
+      color: #b0a9a2;
+    }
+    .breadcrumbs li:last-child {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--orange-soft);
+      color: #8b4b08;
+      border-radius: 6px;
+      padding: 5px 9px;
+      font-size: 10px;
+      font-weight: 650;
+      letter-spacing: 0.3px;
+    }
+    .admin-badge .icon { width: 13px; height: 13px; }
+    .account-menu {
+      position: relative;
+      padding-left: 16px;
+      border-left: 1px solid var(--line);
+    }
+    .account-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 2px;
+      border: 0;
+      background: none;
+      font-size: 12.5px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      transition: background var(--transition);
+    }
+    .account-trigger:hover { background: #f7f6f5; }
+    .account-trigger .admin-avatar { width: 28px; height: 28px; }
+    .account-trigger > .icon {
+      width: 13px;
+      height: 13px;
+      margin-left: 4px;
+      color: #7a736c;
+    }
+    .account-popover {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 40;
+      width: 220px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
+    }
+    .account-popover strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .account-popover p {
+      margin: 3px 0 14px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+    .account-popover button {
+      width: 100%;
+      padding: 9px;
+      background: #faf9f7;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .account-popover button:hover {
+      background: #f3f1ef;
+      border-color: var(--line-strong);
+    }
+
+    /* Main content */
+    main {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px 24px 28px;
+    }
+
+    /* Summary grid */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .member-summary {
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 22px;
+      min-height: 160px;
+      padding: 22px 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+    }
+    .member-summary h1 {
+      margin: 0 0 16px;
+      font-size: 19px;
+      font-weight: 650;
+      line-height: 1.28;
+      letter-spacing: -0.35px;
+      color: var(--ink);
+    }
+    .summary-fields {
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      align-content: start;
+      gap: 10px 12px;
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.4;
+    }
+    .summary-fields dt {
+      color: var(--muted);
+      font-size: 11.5px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .summary-fields dd {
+      margin: 0;
+      font-weight: 550;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+      overflow-wrap: anywhere;
+    }
+    .summary-secondary {
+      align-self: center;
+      padding-left: 22px;
+      border-left: 1px solid var(--line);
+      grid-template-columns: 76px minmax(0, 1fr);
+    }
+    .summary-secondary .email-value {
+      font-size: 12px;
+      letter-spacing: -0.15px;
+      white-space: nowrap;
+    }
+    .summary-operations {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding-top: 4px;
+      min-width: 0;
+    }
+    .profile-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .button {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      min-height: 36px;
+      padding: 7px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: #3b2b24;
+      font-size: 12.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      box-shadow: var(--shadow-xs);
+      transition: background var(--transition), border-color var(--transition), box-shadow var(--transition), transform 100ms ease;
+    }
+    .button:hover {
+      background: #faf8f5;
+      border-color: #c8bfb6;
+      box-shadow: var(--shadow-sm);
+    }
+    .button:active {
+      transform: translateY(1px);
+      box-shadow: var(--shadow-xs);
+    }
+    .button.primary {
+      color: white;
+      background: var(--orange);
+      border-color: var(--orange);
+      box-shadow: 0 1px 2px rgba(232, 135, 10, 0.25);
+    }
+    .button.primary:hover {
+      background: var(--orange-hover);
+      border-color: var(--orange-hover);
+      box-shadow: 0 2px 6px rgba(232, 135, 10, 0.3);
+    }
+    .button .icon { width: 17px; height: 17px; }
+
+    /* Current plan */
+    .current-plan {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-height: 90px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+    }
+    .current-plan-title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .current-plan-title .icon {
+      width: 22px;
+      height: 22px;
+      color: #7b726d;
+    }
+    .current-plan-title h2 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .plan-empty { text-align: center; }
+    .plan-empty > .icon {
+      width: 22px;
+      height: 22px;
+      margin-bottom: 6px;
+      color: #b8b4b1;
+    }
+    .plan-empty h3 {
+      font-size: 12.5px;
+      font-weight: 550;
+      color: #4a433e;
+    }
+    .plan-empty p {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Balance cards */
+    .balances {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .balance-card {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      min-height: 88px;
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow var(--transition), border-color var(--transition);
+    }
+    .balance-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--line-strong);
+    }
+    .balance-card.featured::before {
+      position: absolute;
+      content: "";
+      inset: 0 0 auto;
+      height: 3px;
+      background: linear-gradient(90deg, var(--orange), #f0a84a);
+    }
+    .balance-card > .icon {
+      width: 24px;
+      height: 24px;
+      margin-top: 2px;
+      color: #7a736c;
+      flex-shrink: 0;
+    }
+    .balance-label {
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.005em;
+    }
+    .balance-amount {
+      display: block;
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1.15;
+      font-weight: 700;
+      letter-spacing: -0.45px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Tabs */
+    .tabs-scroll {
+      overflow-x: auto;
+      margin-top: 20px;
+      scrollbar-width: thin;
+    }
+    .tabs {
+      display: flex;
+      align-items: stretch;
+      gap: 4px;
+      min-width: max-content;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      min-height: 40px;
+      margin-bottom: -1px;
+      padding: 8px 16px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      background: none;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: -0.01em;
+      border-radius: 5px 5px 0 0;
+      transition: color var(--transition), background var(--transition), border-color var(--transition);
+    }
+    .tab:hover {
+      background: #fff9ef;
+      color: #5c554f;
+    }
+    .tab[aria-selected="true"] {
+      border-bottom-color: var(--orange);
+      color: #8c510e;
+      font-weight: 600;
+      background: transparent;
+    }
+    .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 20px;
+      height: 19px;
+      padding: 0 6px;
+      border-radius: 20px;
+      background: #f0eeec;
+      color: #7a736c;
+      font-size: 11px;
+      font-weight: 550;
+      font-variant-numeric: tabular-nums;
+    }
+    .tab[aria-selected="true"] .count {
+      background: var(--orange-soft);
+      color: #8b4b08;
+    }
+
+    /* Panels */
+    .tab-panel { padding-top: 14px; }
+    .panel {
+      min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+    }
+    .allocation-panel {
+      min-height: 130px;
+      padding: 16px 18px 18px;
+    }
+    .plan-estimate {
+      margin-bottom: 12px;
+      font-size: 12.5px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .allocation-empty {
+      display: grid;
+      place-items: center;
+      min-height: 78px;
+      padding: 20px;
+      text-align: center;
+      border: 1px dashed #e0dcd7;
+      border-radius: 10px;
+      background: #fafafb;
+      color: #8b827b;
+      font-size: 13px;
+    }
+    .signins-panel {
+      margin-top: 18px;
+      padding: 18px 16px 18px;
+    }
+    .signins-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 0 6px;
+    }
+    .signins-header > .icon {
+      width: 26px;
+      height: 26px;
+      margin-top: 2px;
+      color: #6b6058;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 15.5px;
+      font-weight: 650;
+      line-height: 1.3;
+      letter-spacing: -0.25px;
+    }
+    .signins-header .count {
+      background: var(--orange-soft);
+      color: #8b4b08;
+      height: 22px;
+      min-width: 24px;
+      font-size: 12px;
+    }
+    .signins-header p {
+      font-size: 12.5px;
+      line-height: 1.4;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .table-scroll {
+      margin-top: 14px;
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 13px;
+    }
+    th {
+      padding: 9px 18px;
+      background: #f6f5f4;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #4b3c35;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      border-bottom: 1px solid var(--line);
+    }
+    td {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      font-weight: 500;
+      font-size: 12.5px;
+      color: #3b2b24;
+      letter-spacing: -0.01em;
+    }
+    tr:last-child td { border-bottom: 0; }
+    tbody tr:hover td { background: #faf9f7; }
+
+    .empty-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      min-height: 150px;
+      padding: 28px;
+      text-align: center;
+    }
+    .empty-panel > .icon {
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      color: #a29c95;
+    }
+    .empty-panel h2 {
+      font-size: 14.5px;
+      font-weight: 600;
+      letter-spacing: -0.15px;
+    }
+    .empty-panel p {
+      max-width: 340px;
+      margin: 5px 0 0;
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /* Referral */
+    .referral-card { min-height: 150px; }
+    .referral-card > .panel-title { font-size: 16px; }
+    .referral-card > p {
+      margin: 6px 0 16px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .field {
+      display: block;
+      margin-top: 18px;
+    }
+    .field > span {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .input, select, textarea {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 14.5px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .input:hover, select:hover, textarea:hover {
+      border-color: #c8bfb6;
+    }
+    .input:focus, select:focus, textarea:focus {
+      border-color: var(--orange);
+      box-shadow: var(--shadow-focus);
+      outline: none;
+    }
+    .input::placeholder, textarea::placeholder { color: #9a9490; }
+    textarea {
+      min-height: 88px;
+      resize: vertical;
+    }
+    .field small {
+      display: block;
+      margin-top: 5px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .select-wrap { position: relative; }
+    .select-wrap select {
+      appearance: none;
+      padding-right: 40px;
+    }
+    .select-wrap > .icon {
+      position: absolute;
+      right: 13px;
+      top: 13px;
+      width: 15px;
+      height: 15px;
+      pointer-events: none;
+      color: #73695f;
+    }
+    .money-input { position: relative; }
+    .money-input > span {
+      position: absolute;
+      left: 13px;
+      top: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .money-input input { padding-left: 32px; }
+    .input-action {
+      display: flex;
+      gap: 10px;
+    }
+    .input-action .input { min-width: 0; }
+    .referral-footnote {
+      margin-top: 10px;
+      font-size: 12.5px;
+      color: var(--muted);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      left: calc(50% + var(--sidebar-width) / 2);
+      bottom: 24px;
+      z-index: 80;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      max-width: calc(100vw - 32px);
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: var(--brown);
+      color: white;
+      box-shadow: var(--shadow-lg);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      opacity: 0;
+      pointer-events: none;
+      transform: translate(-50%, 12px);
+      transition: transform 180ms cubic-bezier(0.25, 0.1, 0.25, 1), opacity 180ms ease;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    .toast .icon { width: 18px; height: 18px; }
+
+    /* Dialogs */
+    dialog {
+      color: var(--ink);
+      width: min(460px, calc(100% - 32px));
+      max-height: calc(100dvh - 40px);
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      background: var(--surface);
+    }
+    dialog::backdrop {
+      background: rgba(31, 22, 18, 0.4);
+      backdrop-filter: blur(4px);
+    }
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .dialog-header h2 {
+      font-size: 18px;
+      font-weight: 650;
+      letter-spacing: -0.3px;
+    }
+    .icon-button {
+      display: inline-grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: #72685f;
+      transition: background var(--transition);
+    }
+    .icon-button:hover { background: #f3f1ef; }
+    .dialog-description {
+      margin-top: 8px;
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .preview-label {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      background: var(--orange-soft);
+      color: #8b4b08;
+      font-size: 10.5px;
+      font-weight: 650;
+      letter-spacing: 0.5px;
+    }
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    dialog .button {
+      min-height: 40px;
+      padding: 9px 16px;
+      font-size: 13.5px;
+    }
+    .review {
+      margin-top: 18px;
+      padding: 16px 18px;
+      background: #faf9f7;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .review dl {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 12px;
+      margin: 0;
+      font-size: 14px;
+    }
+    .review dt { color: var(--muted); font-weight: 500; }
+    .review dd {
+      margin: 0;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .review-note {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .mobile-menu, .close-sidebar, .nav-backdrop { display: none; }
+
+    /* Large screens */
+    @media (min-width: 1500px) {
+      :root { --sidebar-width: 212px; }
+      .wordmark { font-size: 20px; }
+      .nav-link { min-height: 42px; font-size: 13.5px; }
+      .nav-section-label { font-size: 10.5px; }
+      .topbar { height: 56px; }
+      .breadcrumbs, .account-trigger { font-size: 13px; }
+      main { padding: 26px 28px 32px; }
+      .member-summary {
+        min-height: 180px;
+        padding: 26px 24px;
+      }
+      .summary-fields {
+        font-size: 13.5px;
+        gap: 12px 14px;
+        grid-template-columns: 84px minmax(0, 1fr);
+      }
+      .summary-fields dt, .summary-secondary .email-value { font-size: 12.5px; }
+      .member-summary h1 { font-size: 21px; }
+      .profile-actions .button {
+        min-height: 40px;
+        font-size: 13.5px;
+        padding-inline: 15px;
+      }
+      .balance-card { padding: 20px 22px; min-height: 98px; }
+      .balance-label { font-size: 13px; }
+      .balance-amount { font-size: 26px; }
+      .tab { min-height: 44px; font-size: 13.5px; }
+      .allocation-panel, .empty-panel { min-height: 160px; }
+      .plan-estimate, .allocation-empty { font-size: 13px; }
+      table, th { font-size: 13.5px; }
+      .current-plan-title h2 { font-size: 16px; }
+      .plan-empty h3, .plan-empty p { font-size: 13px; }
+    }
+
+    /* Medium */
+    @media (max-width: 1180px) {
+      .summary-grid { grid-template-columns: 1fr; }
+      .member-summary {
+        min-height: 160px;
+        grid-template-columns: 1fr 1fr;
+        padding: 22px;
+      }
+      .summary-fields {
+        grid-template-columns: 86px minmax(0, 1fr);
+        font-size: 13px;
+      }
+      .summary-secondary .email-value {
+        font-size: 12.5px;
+        white-space: normal;
+      }
+      .summary-operations {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        gap: 14px;
+        padding-top: 0;
+      }
+      .profile-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        align-content: center;
+      }
+      .current-plan { min-height: 92px; padding: 14px; }
+      .balance-card { gap: 12px; padding: 16px 18px; }
+      .balance-label { font-size: 12px; }
+      .balance-card > .icon { width: 22px; height: 22px; }
+      .tab { padding-inline: 16px; }
+    }
+
+    /* Tablet / mobile nav */
+    @media (max-width: 800px) {
+      :root { --sidebar-width: 240px; }
+      .sidebar {
+        transform: translateX(-100%);
+        visibility: hidden;
+        transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1), visibility 220ms;
+        box-shadow: var(--shadow-lg);
+      }
+      .sidebar.is-open {
+        transform: translateX(0);
+        visibility: visible;
+      }
+      .app-shell { margin-left: 0; }
+      .wordmark { font-size: 21px; }
+      .nav-link { font-size: 14px; min-height: 44px; }
+      .nav-section-label { font-size: 10.5px; }
+      .admin-profile strong, .signout { font-size: 14px; }
+      .admin-profile small { font-size: 12.5px; }
+      .topbar {
+        height: 54px;
+        gap: 12px;
+        padding-inline: 16px;
+      }
+      .mobile-menu {
+        display: inline-grid;
+        margin-left: -4px;
+      }
+      .close-sidebar {
+        display: inline-grid;
+        position: absolute;
+        top: 72px;
+        right: 12px;
+      }
+      .breadcrumbs {
+        margin-right: auto;
+        font-size: 13px;
+      }
+      .breadcrumbs li:not(:last-child) { display: none; }
+      .topbar-right .admin-badge { display: none; }
+      .account-menu {
+        padding-left: 0;
+        border: 0;
+      }
+      .account-trigger .account-name { display: none; }
+      .account-trigger { gap: 4px; }
+      .account-trigger > .icon { margin-left: 0; }
+      main { padding: 16px; }
+      .member-summary { padding: 20px; }
+      .summary-fields { grid-template-columns: 80px minmax(0, 1fr); }
+      .summary-operations { grid-template-columns: 1fr 1fr; }
+      .profile-actions { gap: 8px; }
+      .profile-actions .button { min-height: 40px; }
+      .profile-actions .button:last-child { flex-basis: 100%; }
+      .balances {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      .balance-card {
+        min-height: 90px;
+        gap: 14px;
+        padding: 16px 18px;
+      }
+      .balance-label { font-size: 12.5px; }
+      .balance-amount { font-size: 24px; }
+      .tab {
+        min-height: 44px;
+        padding-inline: 14px;
+        font-size: 13px;
+      }
+      .toast { left: 50%; }
+      .nav-backdrop.is-open {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 29;
+        background: rgba(31, 22, 18, 0.35);
+        backdrop-filter: blur(2px);
+      }
+      body.nav-open { overflow: hidden; }
+      .signins-header p { font-size: 13px; }
+      .allocation-panel, .empty-panel { min-height: 140px; }
+    }
+
+    /* Small phones */
+    @media (max-width: 560px) {
+      main { padding: 14px; }
+      .member-summary {
+        grid-template-columns: 1fr;
+        gap: 18px;
+        padding: 18px;
+      }
+      .member-summary h1 {
+        margin-bottom: 16px;
+        font-size: 19px;
+      }
+      .summary-fields {
+        grid-template-columns: 90px minmax(0, 1fr);
+        gap: 11px 10px;
+        font-size: 13px;
+      }
+      .summary-fields dt { font-size: 12.5px; }
+      .summary-secondary {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        padding: 16px 0 0;
+      }
+      .summary-secondary .email-value {
+        font-size: 12.5px;
+        white-space: normal;
+      }
+      .summary-operations { display: flex; gap: 12px; }
+      .profile-actions {
+        flex-wrap: wrap;
+        width: 100%;
+      }
+      .profile-actions .button {
+        flex: 1;
+        min-height: 42px;
+        font-size: 13px;
+      }
+      .profile-actions .button:last-child { flex-basis: 100%; }
+      .current-plan { min-height: 88px; }
+      .current-plan-title {
+        flex-direction: row;
+        gap: 8px;
+      }
+      .current-plan-title h2 { font-size: 14.5px; }
+      .plan-empty > .icon { display: none; }
+      .plan-empty h3, .plan-empty p { font-size: 12px; }
+      .balance-card {
+        gap: 10px;
+        min-height: 88px;
+        padding: 15px 14px;
+      }
+      .balance-card > .icon { width: 20px; height: 20px; }
+      .balance-label {
+        min-height: 28px;
+        font-size: 12px;
+      }
+      .balance-amount { font-size: 22px; }
+      .allocation-panel { padding: 14px; }
+      .allocation-empty { min-height: 76px; }
+      .signins-panel { padding: 14px 12px; }
+      .signins-header {
+        padding: 0 2px;
+        gap: 10px;
+      }
+      .signins-header > .icon { width: 24px; height: 24px; }
+      .panel-title { font-size: 16px; }
+      .signins-header p { font-size: 12px; }
+      th, td { padding: 10px 14px; }
+      .input-action { flex-direction: column; }
+      .field > span { font-size: 13px; }
+      .input, select, textarea { font-size: 16px; }
+      dialog { border-radius: 14px; }
+      .dialog-actions .button { flex: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Self-contained front-end. No libraries, fonts, or images need to be downloaded.
+       Configure member data, navigation URLs and referralUrl in PORTAL_CONFIG below.
+       Transfer and assignment forms are previews; they do not change account data. -->
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="4"/><path d="M3.5 21v-2a8.5 8.5 0 0 1 17 0v2"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v15m-7-7 7 7 7-7M4 22h16"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-exit" viewBox="0 0 24 24"><path d="M10 3H4v18h6m5-14 5 5-5 5m-7-5h12"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 4.5-8 9-8 9s-8-4.5-8-9V6l8-3Z"/><path d="m8 11 3 3 5-5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m10 5-7 7 7 7M3 12h18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 11h18m-13 4h2m4 0h2m-8 3h2"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="m10 13 4-4m-6 6H6a4 4 0 0 1 0-8h5m2 10h5a4 4 0 0 0 0-8h-2"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7V5l14-3v5M3 7h18v14H3V7Z"/><path d="M16 12h5v5h-5z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7l10-5Zm-10 10 10 5 10-5M2 17l10 5 10-5"/></symbol>
+    <symbol id="i-coins" viewBox="0 0 24 24"><ellipse cx="8" cy="10" rx="6" ry="3"/><path d="M2 10v8c0 1.7 2.7 3 6 3s6-1.3 6-3v-8M2 14c0 1.7 2.7 3 6 3s6-1.3 6-3"/><ellipse cx="16" cy="5" rx="6" ry="3"/><path d="M22 5v8c0 1.7-2.7 3-6 3m-2-4c4.4.8 8-.7 8-3"/></symbol>
+    <symbol id="i-percent" viewBox="0 0 24 24"><path d="M5 21 19 3"/><circle cx="5" cy="6" r="3"/><circle cx="19" cy="18" r="3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M5 2h9l5 5v15H5V2Z"/><path d="M14 2v6h5M8 12h8m-8 4h8"/></symbol>
+    <symbol id="i-laptop" viewBox="0 0 24 24"><path d="M4 3h16v14H4zM4 17l-3 4h22l-3-4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m2-17a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 5v3"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M3 10 5 3h14l2 7M4 13v8h16v-8M9 21v-7h6v7M3 10a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 3v7m6-7v7"/></symbol>
+  </svg>
+  <a class="skip-link" href="#main">Skip to member profile</a>
+  <div class="nav-backdrop" id="nav-backdrop" aria-hidden="true"></div>
+  <aside class="sidebar" id="sidebar" aria-label="Administration sidebar">
+    <a class="brand" href="#main" aria-label="Mom’s Touch admin workspace">
+      <span class="wordmark">MOM’S <span>TOUCH</span></span>
+      <span class="brand-caption">ADMIN WORKSPACE</span>
+    </a>
+    <button type="button" class="icon-button close-sidebar" id="close-sidebar" aria-label="Close navigation"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button>
+    <p class="nav-section-label">MEMBERS &amp; OPERATIONS</p>
+    <nav class="primary-nav" aria-label="Main navigation">
+      <button class="nav-link" type="button" data-route="overview"><svg class="icon" aria-hidden="true"><use href="#i-grid"/></svg><span>Overview</span></button>
+      <button class="nav-link active" type="button" data-route="members" aria-current="page"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg><span>Members</span></button>
+      <button class="nav-link" type="button" data-route="deposits"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg><span>Deposit requests</span></button>
+      <button class="nav-link" type="button" data-route="withdrawals"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg><span>Withdrawal requests</span></button>
+      <button class="nav-link" type="button" data-route="receipts"><svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg><span>Receipt logs</span></button>
+      <button class="nav-link" type="button" data-route="activity"><svg class="icon" aria-hidden="true"><use href="#i-clock"/></svg><span>Activity log</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="admin-profile"><span class="admin-avatar"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg></span><div><strong>Portal Admin</strong><small>Administrator access</small></div></div>
+      <button class="signout" type="button" data-signout><svg class="icon" aria-hidden="true"><use href="#i-exit"/></svg>Sign out</button>
+    </div>
+  </aside>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="icon-button mobile-menu" id="mobile-menu" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false"><svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg></button>
+      <nav aria-label="Breadcrumb"><ol class="breadcrumbs"><li>Administration<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></li><li>Members<svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></li><li aria-current="page">Member profile</li></ol></nav>
+      <div class="topbar-right">
+        <span class="admin-badge"><svg class="icon small" aria-hidden="true"><use href="#i-shield"/></svg>ADMIN</span>
+        <div class="account-menu">
+          <button class="account-trigger" type="button" id="account-trigger" aria-expanded="false" aria-controls="account-popover" aria-label="Portal Admin account"><span class="admin-avatar"><svg class="icon" aria-hidden="true"><use href="#i-user"/></svg></span><span class="account-name">Portal Admin</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>
+          <div class="account-popover" id="account-popover" hidden><strong>Portal Admin</strong><p>Administrator access</p><button type="button" data-signout>Sign out</button></div>
+        </div>
+      </div>
+    </header>
+    <main id="main" tabindex="-1">
+      <div class="summary-grid">
+        <section class="member-summary" aria-labelledby="member-name">
+          <div class="summary-primary">
+            <h1 id="member-name" data-member="name">Moms Touch Philippines</h1>
+            <dl class="summary-fields">
+              <dt>Phone number</dt><dd data-member="phone">09786543602</dd>
+              <dt>Role</dt><dd data-member="role">Member</dd>
+              <dt>Address</dt><dd data-member="address">Fort Bonifacio Global City</dd>
+            </dl>
+          </div>
+          <dl class="summary-fields summary-secondary">
+            <dt>Email address</dt><dd class="email-value" data-member="email">momstouchphilippine@gmail.com</dd>
+            <dt>Member ID</dt><dd data-member="displayId">#4</dd>
+            <dt>Gender</dt><dd data-member="gender">Male</dd>
+            <dt>Joined</dt><dd data-member="joined">Nov 23, 2026 · 10:23 PM</dd>
+          </dl>
+        </section>
+        <div class="summary-operations">
+          <div class="profile-actions">
+            <button type="button" class="button" data-open="funds-dialog"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Send funds</button>
+            <button type="button" class="button primary" data-open="plan-dialog"><svg class="icon" aria-hidden="true"><use href="#i-calendar"/></svg>Assign a plan</button>
+            <button type="button" class="button" id="copy-referral"><svg class="icon" aria-hidden="true"><use href="#i-link"/></svg>Copy referral link</button>
+          </div>
+          <section class="current-plan" aria-labelledby="plan-heading">
+            <div class="current-plan-title"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><h2 id="plan-heading">Current plan</h2></div>
+            <div class="plan-empty"><svg class="icon" aria-hidden="true"><use href="#i-file"/></svg><h3>No plan assigned</h3><p>Assigned plans will appear here.</p></div>
+          </section>
+        </div>
+      </div>
+      <section class="balances" aria-label="Member account balances">
+        <article class="balance-card featured"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><div><h2 class="balance-label">Available balance</h2><strong class="balance-amount" data-balance="available">₱0.00</strong></div></article>
+        <article class="balance-card"><svg class="icon" aria-hidden="true"><use href="#i-layers"/></svg><div><h2 class="balance-label">Reserved withdrawals</h2><strong class="balance-amount" data-balance="reserved">₱0.00</strong></div></article>
+        <article class="balance-card"><svg class="icon" aria-hidden="true"><use href="#i-coins"/></svg><div><h2 class="balance-label">Money in plans</h2><strong class="balance-amount" data-balance="plans">₱0.00</strong></div></article>
+        <article class="balance-card"><svg class="icon" aria-hidden="true"><use href="#i-percent"/></svg><div><h2 class="balance-label">Interest received</h2><strong class="balance-amount" data-balance="interest">₱0.00</strong></div></article>
+      </section>
+      <div class="tabs-scroll"><div class="tabs" role="tablist" aria-label="Member sections">
+
+        <button class="tab" id="tab-plans" type="button" role="tab" aria-selected="true" aria-controls="panel-plans" tabindex="0" data-tab="plans">Plans<span class="count">0</span></button>
+        <button class="tab" id="tab-deposits" type="button" role="tab" aria-selected="false" aria-controls="panel-deposits" tabindex="-1" data-tab="deposits">Deposits<span class="count">0</span></button>
+        <button class="tab" id="tab-withdrawals" type="button" role="tab" aria-selected="false" aria-controls="panel-withdrawals" tabindex="-1" data-tab="withdrawals">Withdrawals<span class="count">0</span></button>
+        <button class="tab" id="tab-wallet" type="button" role="tab" aria-selected="false" aria-controls="panel-wallet" tabindex="-1" data-tab="wallet">Wallet activity<span class="count">0</span></button>
+        <button class="tab" id="tab-franchise" type="button" role="tab" aria-selected="false" aria-controls="panel-franchise" tabindex="-1" data-tab="franchise">Franchise<span class="count">0</span></button>
+        <button class="tab" id="tab-referrals" type="button" role="tab" aria-selected="false" aria-controls="panel-referrals" tabindex="-1" data-tab="referrals">Referrals</button>
+      </div></div>
+      <section class="tab-panel" id="panel-plans" role="tabpanel" aria-labelledby="tab-plans" tabindex="0">
+        <div class="panel allocation-panel">
+          <p class="plan-estimate">Daily estimate: <span data-balance="daily">₱0.00</span></p>
+          <div class="allocation-empty">No plan allocations yet.</div>
+        </div>
+      </section>
+      <section class="tab-panel" id="panel-deposits" role="tabpanel" aria-labelledby="tab-deposits" tabindex="0" hidden><div class="panel empty-panel"><svg class="icon" aria-hidden="true"><use href="#i-down"/></svg><h2>No deposit requests</h2><p>Deposit requests from this member will appear here.</p></div></section>
+      <section class="tab-panel" id="panel-withdrawals" role="tabpanel" aria-labelledby="tab-withdrawals" tabindex="0" hidden><div class="panel empty-panel"><svg class="icon" aria-hidden="true"><use href="#i-up"/></svg><h2>No withdrawal requests</h2><p>Withdrawal requests from this member will appear here.</p></div></section>
+      <section class="tab-panel" id="panel-wallet" role="tabpanel" aria-labelledby="tab-wallet" tabindex="0" hidden><div class="panel empty-panel"><svg class="icon" aria-hidden="true"><use href="#i-wallet"/></svg><h2>No wallet activity</h2><p>This member’s wallet transactions will appear here.</p></div></section>
+      <section class="tab-panel" id="panel-franchise" role="tabpanel" aria-labelledby="tab-franchise" tabindex="0" hidden><div class="panel empty-panel"><svg class="icon" aria-hidden="true"><use href="#i-store"/></svg><h2>No franchise applications</h2><p>Franchise applications from this member will appear here.</p></div></section>
+      <section class="tab-panel" id="panel-referrals" role="tabpanel" aria-labelledby="tab-referrals" tabindex="0" hidden><div class="panel referral-card"><h2 class="panel-title">Referral link</h2><p>Copy this member’s referral link to share it.</p><label class="field"><span>Referral URL</span><div class="input-action"><input class="input" id="referral-input" type="url" placeholder="Enter the member’s referral URL" autocomplete="off"><button class="button" type="button" id="copy-referral-panel"><svg class="icon small" aria-hidden="true"><use href="#i-copy"/></svg>Copy link</button></div></label><p class="referral-footnote" id="referral-note">No referral link has been provided for this preview.</p></div></section>
+        <section class="panel signins-panel" aria-labelledby="signins-heading"><div class="signins-header"><svg class="icon" aria-hidden="true"><use href="#i-laptop"/></svg><div><h2 class="panel-title" id="signins-heading">Recent sign-ins<span class="count" aria-label="1 sign-in">1</span></h2><p>Sign-in records are kept for 30 days.</p></div></div>
+          <div class="table-scroll" role="region" aria-label="Recent sign-ins table" tabindex="0"><table><thead><tr><th scope="col">Date &amp; time</th><th scope="col">IP address</th><th scope="col">Device / browser</th><th scope="col">Location</th></tr></thead><tbody><tr><td><time datetime="2026-11-23T22:23:00+08:00">Nov 23, 2026 · 10:23 PM</time></td><td>202.61.110.149</td><td>Chrome 157 · Windows 10</td><td>Philippines</td></tr></tbody></table></div>
+        </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg><span id="toast-text"></span></div>
+  <dialog id="funds-dialog" aria-labelledby="funds-title" aria-describedby="funds-description"><div class="dialog-header"><h2 id="funds-title">Send funds</h2><button class="icon-button" type="button" data-close aria-label="Close send funds"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><p class="dialog-description" id="funds-description">Prepare a transfer for <strong data-member="name">Moms Touch Philippines</strong>.</p><span class="preview-label">PREVIEW ONLY</span>
+    <form id="funds-form"><label class="field"><span>Amount (PHP)</span><div class="money-input"><span aria-hidden="true">₱</span><input class="input" name="amount" type="number" inputmode="decimal" min="0.01" max="999999999.99" step="0.01" placeholder="0.00" required></div></label><label class="field"><span>Note <small style="display:inline;font-weight:400">(optional)</small></span><textarea name="note" placeholder="Add a transfer note" maxlength="300"></textarea></label><p class="dialog-description">Review the details below. No funds will be sent.</p><div class="dialog-actions"><button class="button" type="button" data-close>Cancel</button><button class="button primary" type="submit">Review transfer</button></div></form>
+    <div id="funds-review" hidden><div class="review"><dl><dt>Member</dt><dd data-member="name">Moms Touch Philippines</dd><dt>Amount</dt><dd id="review-amount"></dd><dt>Note</dt><dd id="review-note"></dd></dl></div><p class="review-note">This is a transfer preview. The member’s balance has not changed.</p><div class="dialog-actions"><button class="button" type="button" id="edit-funds">Edit details</button><button class="button primary" type="button" data-close>Done</button></div></div>
+  </dialog>
+  <dialog id="plan-dialog" aria-labelledby="plan-title" aria-describedby="plan-description"><div class="dialog-header"><h2 id="plan-title">Assign a plan</h2><button class="icon-button" type="button" data-close aria-label="Close plan assignment"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><p class="dialog-description" id="plan-description">Choose a plan for <strong data-member="name">Moms Touch Philippines</strong>.</p><span class="preview-label">PREVIEW ONLY</span>
+    <form id="plan-form"><label class="field"><span>Plan</span><div class="select-wrap"><select name="plan" id="plan-choice" aria-label="Plan" required><option value="">Select a plan</option><option>Mom’s Select</option><option>Mom’s Prime</option><option>Mom’s Signature</option></select><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></div></label><p class="dialog-description">Review your selection before assigning it in the portal.</p><div class="dialog-actions"><button class="button" type="button" data-close>Cancel</button><button class="button primary" type="submit">Review plan</button></div></form>
+    <div id="plan-review" hidden><div class="review"><dl><dt>Member</dt><dd data-member="name">Moms Touch Philippines</dd><dt>Selected plan</dt><dd id="review-plan"></dd></dl></div><p class="review-note">This is an assignment preview. No plan has been added to the member’s account.</p><div class="dialog-actions"><button class="button" type="button" id="edit-plan">Edit selection</button><button class="button primary" type="button" data-close>Done</button></div></div>
+  </dialog>
+  <dialog id="section-dialog" aria-labelledby="section-title"><div class="dialog-header"><h2 id="section-title">Page preview</h2><button class="icon-button" type="button" data-close aria-label="Close page preview"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><p class="dialog-description" id="section-description">This standalone HTML includes the member profile. Other portal pages are not included.</p><div class="dialog-actions"><button class="button primary" type="button" data-close>Back to profile</button></div></dialog>
+  <script>
+    'use strict';
+    // Integration: fill in your existing portal routes and the member's actual referral URL.
+    // Use server-provided data for a live portal; never trust balances or permissions from a browser.
+    const PORTAL_CONFIG = {
+      member: {
+        id: 4, displayId: '#4', initials: 'MT', name: 'Moms Touch Philippines',
+        email: 'momstouchphilippine@gmail.com', phone: '09786543602',
+        role: 'Member', gender: 'Male', address: 'Fort Bonifacio Global City',
+        joined: 'Nov 23, 2026 · 10:23 PM'
+      },
+      balances: { available: 0, reserved: 0, plans: 0, interest: 0, daily: 0 },
+      referralUrl: '',
+      routes: { overview: '', members: '', deposits: '', withdrawals: '', receipts: '', activity: '' }
+    };
+    const $ = (selector, scope = document) => scope.querySelector(selector);
+    const $$ = (selector, scope = document) => [...scope.querySelectorAll(selector)];
+    const money = value => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 }).format(value);
+    $$('[data-member]').forEach(element => { const value = PORTAL_CONFIG.member[element.dataset.member]; if (value !== undefined) element.textContent = value; });
+    $$('[data-balance]').forEach(element => { element.textContent = money(PORTAL_CONFIG.balances[element.dataset.balance] || 0); });
+    document.title = PORTAL_CONFIG.member.name + ' · Mom’s Touch';
+    let toastTimer;
+    function showToast(message) { $('#toast-text').textContent = message; $('#toast').classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => $('#toast').classList.remove('show'), 4000); }
+    const tabs = $$('.tab');
+    function activateTab(name, focus = false) {
+      if (!tabs.some(tab => tab.dataset.tab === name)) return;
+      tabs.forEach(tab => { const selected = tab.dataset.tab === name; tab.setAttribute('aria-selected', String(selected)); tab.tabIndex = selected ? 0 : -1; $('#' + tab.getAttribute('aria-controls')).hidden = !selected; if (selected && focus) { tab.focus(); tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } });
+    }
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => activateTab(tab.dataset.tab));
+      tab.addEventListener('keydown', event => {
+        let next = index;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = tabs.length - 1;
+        else return;
+        event.preventDefault(); activateTab(tabs[next].dataset.tab, true);
+      });
+    });
+    let dialogTrigger = null;
+    function openDialog(id, trigger) {
+      const dialog = document.getElementById(id);
+      if (!dialog || dialog.open) return;
+      dialogTrigger = trigger || document.activeElement;
+      if (id === 'funds-dialog') { $('#funds-form').hidden = false; $('#funds-review').hidden = true; }
+      if (id === 'plan-dialog') { $('#plan-form').hidden = false; $('#plan-review').hidden = true; }
+      dialog.showModal();
+    }
+    $$('[data-open]').forEach(button => button.addEventListener('click', () => openDialog(button.dataset.open, button)));
+    $$('[data-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+    $$('dialog').forEach(dialog => {
+      dialog.addEventListener('close', () => { if (dialogTrigger && dialogTrigger.isConnected) dialogTrigger.focus(); });
+      dialog.addEventListener('click', event => { if (event.target !== dialog) return; const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); });
+    });
+    $('#funds-form').addEventListener('submit', event => {
+      event.preventDefault(); const data = new FormData(event.currentTarget); const amount = Number(data.get('amount'));
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      $('#review-amount').textContent = money(amount); $('#review-note').textContent = String(data.get('note') || '').trim() || 'No note';
+      $('#funds-form').hidden = true; $('#funds-review').hidden = false; $('#edit-funds').focus();
+    });
+    $('#edit-funds').addEventListener('click', () => { $('#funds-review').hidden = true; $('#funds-form').hidden = false; $('#funds-form input').focus(); });
+    $('#plan-form').addEventListener('submit', event => { event.preventDefault(); $('#review-plan').textContent = new FormData(event.currentTarget).get('plan'); $('#plan-form').hidden = true; $('#plan-review').hidden = false; $('#edit-plan').focus(); });
+    $('#edit-plan').addEventListener('click', () => { $('#plan-review').hidden = true; $('#plan-form').hidden = false; $('#plan-form select').focus(); });
+    const referralInput = $('#referral-input'); referralInput.value = PORTAL_CONFIG.referralUrl;
+    if (PORTAL_CONFIG.referralUrl) $('#referral-note').hidden = true;
+    function referralValue() { return referralInput.value.trim(); }
+    async function copyReferral() {
+      const value = referralValue();
+      if (!value) { activateTab('referrals'); referralInput.focus(); showToast('Add the member’s referral URL to copy it.'); return; }
+      let url; try { url = new URL(value); } catch { activateTab('referrals'); referralInput.focus(); showToast('Enter a valid referral URL.'); return; }
+      if (!['https:', 'http:'].includes(url.protocol)) { activateTab('referrals'); referralInput.focus(); showToast('Use an https:// or http:// referral URL.'); return; }
+      try {
+        if (!navigator.clipboard || !window.isSecureContext) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(value);
+      } catch {
+        activateTab('referrals'); referralInput.focus(); referralInput.select();
+        try { if (!document.execCommand('copy')) throw new Error('Copy unavailable'); }
+        catch { showToast('Link selected. Press Ctrl+C or use your device’s Copy command.'); return; }
+      }
+      showToast('Referral link copied.');
+    }
+    $('#copy-referral').addEventListener('click', copyReferral);
+    $('#copy-referral-panel').addEventListener('click', copyReferral);
+    referralInput.addEventListener('input', () => { $('#referral-note').hidden = Boolean(referralValue()); });
+    const sidebar = $('#sidebar'), menuButton = $('#mobile-menu'), navBackdrop = $('#nav-backdrop');
+    const mobileQuery = window.matchMedia('(max-width: 800px)');
+    function setSidebar(open, restoreFocus = false) {
+      sidebar.classList.toggle('is-open', open); navBackdrop.classList.toggle('is-open', open);
+      menuButton.setAttribute('aria-expanded', String(open)); document.body.classList.toggle('nav-open', open);
+      sidebar.inert = mobileQuery.matches && !open;
+      if (open) { $('.close-sidebar').focus(); } else if (restoreFocus) menuButton.focus();
+    }
+    menuButton.addEventListener('click', () => setSidebar(true));
+    $('#close-sidebar').addEventListener('click', () => setSidebar(false, true));
+    navBackdrop.addEventListener('click', () => setSidebar(false, true));
+    mobileQuery.addEventListener('change', () => setSidebar(false));
+    setSidebar(false);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { if (sidebar.classList.contains('is-open')) setSidebar(false, true); if (!$('#account-popover').hidden) { toggleAccount(false); $('#account-trigger').focus(); } }
+      if (event.key === 'Tab' && sidebar.classList.contains('is-open') && mobileQuery.matches) {
+        const focusable = $$('button, a[href]', sidebar); const first = focusable[0], last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) { last.focus(); event.preventDefault(); }
+        else if (!event.shiftKey && document.activeElement === last) { first.focus(); event.preventDefault(); }
+      }
+    });
+    function toggleAccount(open) { $('#account-popover').hidden = !open; $('#account-trigger').setAttribute('aria-expanded', String(open)); }
+    $('#account-trigger').addEventListener('click', () => toggleAccount($('#account-popover').hidden));
+    document.addEventListener('click', event => { if (!event.target.closest('.account-menu')) toggleAccount(false); });
+    $$('[data-signout]').forEach(button => button.addEventListener('click', () => { toggleAccount(false); showToast('This preview has no active sign-in session.'); }));
+    $$('[data-route]').forEach(button => button.addEventListener('click', () => {
+      const key = button.dataset.route; const route = PORTAL_CONFIG.routes[key]; setSidebar(false);
+      if (route) { window.location.assign(route); return; }
+      $('#section-title').textContent = button.textContent.trim();
+      openDialog('section-dialog', mobileQuery.matches && button.closest('.sidebar') ? menuButton : button);
+    }));
+  </script>
+</body>
+</html>
