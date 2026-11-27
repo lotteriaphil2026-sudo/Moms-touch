@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Services\InvestmentReminderService;
 use App\Services\MemberSignInRecorder;
+use App\Services\WebPushNotificationService;
 use Firebase\JWT\JWK;
 use Firebase\JWT\JWT;
 use Illuminate\Database\QueryException;
@@ -252,6 +253,11 @@ class GoogleAuthController extends Controller
         $request->session()->forget(['google_onboarding', 'google_signup_referral']);
 
         $this->completeLogin($request, $user);
+        app(WebPushNotificationService::class)->notifyAdmins(
+            'A new member has created an account. Open the member directory to view the account.',
+            '/#/admin?tab=members',
+            'New user registered'
+        );
 
         return response()->json(app(PortalController::class)->payloadForUser($user));
     }

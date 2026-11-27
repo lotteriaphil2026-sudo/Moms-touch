@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
-use App\Services\{HomeScreenBonusService, InterestAccrualService, PortalMoney, WalletRequestService, WalletService};
+use App\Services\{HomeScreenBonusService, InterestAccrualService, PortalMoney, WalletRequestService, WalletService, WebPushNotificationService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -18,10 +18,20 @@ class PortalController extends Controller
     public function presence(Request $request): JsonResponse
     {
         $now = now();
-        DB::table('users')
-            ->where('id', $request->user()->id)
+        $user = $request->user();
+        $wasOffline = ! $user->last_seen_at || $user->last_seen_at->lte($now->copy()->subMinutes(2));
+        $updated = DB::table('users')
+            ->where('id', $user->id)
             ->where(fn ($query) => $query->whereNull('last_seen_at')->orWhere('last_seen_at', '<=', $now->copy()->subSeconds(30)))
             ->update(['last_seen_at' => $now]);
+
+        if ($updated === 1 && $wasOffline && ! $user->is_admin && ! $user->is_dummy) {
+            app(WebPushNotificationService::class)->notifyAdmins(
+                'A member has come online. Open the member directory to see who is active.',
+                '/#/admin?tab=members',
+                'Member came online'
+            );
+        }
 
         return response()->json(['ok' => true]);
     }

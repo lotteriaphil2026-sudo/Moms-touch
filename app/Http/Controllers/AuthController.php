@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{User, Wallet};
-use App\Services\{InvestmentReminderService, MemberSignInRecorder};
+use App\Services\{InvestmentReminderService, MemberSignInRecorder, WebPushNotificationService};
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\{Auth, DB, Hash, Password};
@@ -84,6 +84,12 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
         app(MemberSignInRecorder::class)->record($request, $user);
+        app(WebPushNotificationService::class)->notifyAdmins(
+            'A new member has created an account. Open the member directory to view the account.',
+            '/#/admin?tab=members',
+            'New user registered'
+        );
+
         return $portal->state($request);
     }
 

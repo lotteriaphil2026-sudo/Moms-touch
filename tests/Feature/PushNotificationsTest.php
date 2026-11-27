@@ -169,6 +169,84 @@ class PushNotificationsTest extends TestCase
         }
     }
 
+    public function test_new_standard_and_google_registrations_notify_subscribed_admins(): void
+    {
+        Queue::fake();
+        config(['portal.registration_enabled' => true]);
+
+        $referrer = User::factory()->create();
+        $admin = User::factory()->create(['is_admin' => true]);
+        $unsubscribedAdmin = User::factory()->create(['is_admin' => true]);
+        $this->subscribe($admin, 'https://fcm.googleapis.com/fcm/send/new-member-admin');
+
+        $this->postJson('/portal/register', [
+            'name' => 'Password Member',
+            'email' => 'password-member@example.test',
+            'phone' => '+639171234567',
+            'date_of_birth' => '1990-01-01',
+            'address' => '123 Example Street, Makati City',
+            'gender' => 'Other',
+            'marital_status' => 'Single',
+            'referral_code' => $referrer->referral_code,
+            'password' => 'Example-password12!',
+            'password_confirmation' => 'Example-password12!',
+        ])->assertOk()->assertJsonPath('user.is_admin', false);
+
+        Queue::assertPushed(SendWebPushNotification::class, 1);
+        Queue::assertPushed(SendWebPushNotification::class, fn (SendWebPushNotification $job) => $job->userId === $admin->id
+            && $job->url === '/#/admin?tab=members'
+            && $job->title === 'New user registered');
+        Queue::assertNotPushed(SendWebPushNotification::class, fn (SendWebPushNotification $job) => $job->userId === $unsubscribedAdmin->id);
+
+        $this->postJson('/portal/logout')->assertOk();
+        $this->withSession(['google_onboarding' => [
+            'google_id' => 'google-new-member',
+            'email' => 'google-member@example.test',
+            'name' => 'Google Member',
+        ]])->postJson('/portal/google-register', [
+            'name' => 'Google Member',
+            'referral_code' => $referrer->referral_code,
+            'phone' => '+639171234567',
+            'date_of_birth' => '1990-01-01',
+            'address' => '123 Example Street, Makati City',
+            'gender' => 'Other',
+            'marital_status' => 'Single',
+        ])->assertOk()->assertJsonPath('user.is_admin', false);
+
+        Queue::assertPushed(SendWebPushNotification::class, 2);
+        Queue::assertPushed(SendWebPushNotification::class, fn (SendWebPushNotification $job) => $job->userId === $admin->id
+            && $job->url === '/#/admin?tab=members'
+            && $job->title === 'New user registered');
+    }
+
+    public function test_presence_notifies_admins_once_when_a_member_returns_online(): void
+    {
+        Queue::fake();
+
+        $admin = User::factory()->create(['is_admin' => true]);
+        $this->subscribe($admin, 'https://fcm.googleapis.com/fcm/send/member-online-admin');
+        $member = User::factory()->create();
+        $member->forceFill(['last_seen_at' => now()->subMinutes(3)])->save();
+
+        $this->actingAs($member)->postJson('/portal/presence')->assertOk();
+        $this->postJson('/portal/presence')->assertOk();
+        Queue::assertPushed(SendWebPushNotification::class, 1);
+        Queue::assertPushed(SendWebPushNotification::class, fn (SendWebPushNotification $job) => $job->userId === $admin->id
+            && $job->url === '/#/admin?tab=members'
+            && $job->title === 'Member came online');
+
+        $this->travel(3)->minutes();
+        $this->postJson('/portal/presence')->assertOk();
+        Queue::assertPushed(SendWebPushNotification::class, 2);
+
+        $dummy = User::factory()->create();
+        $dummy->forceFill(['is_dummy' => true, 'last_seen_at' => now()->subMinutes(3)])->save();
+        $this->actingAs($dummy)->postJson('/portal/presence')->assertOk();
+        $admin->forceFill(['last_seen_at' => now()->subMinutes(3)])->save();
+        $this->actingAs($admin)->postJson('/portal/presence')->assertOk();
+        Queue::assertPushed(SendWebPushNotification::class, 2);
+    }
+
     public function test_admin_funds_and_package_actions_notify_the_acting_admin_and_member(): void
     {
         Queue::fake();
