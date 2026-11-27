@@ -25,7 +25,7 @@
               <div><div class="mt-r-eyebrow" id="mtRTitle">Add funds request</div><div class="mt-r-amount" id="mtRAmount">₱0.00</div></div>
               <span class="mt-r-mark" id="mtRMark" aria-hidden="true"></span>
             </div>
-            <div class="mt-r-brand">MOM’S TOUCH <span style="color:#c58e10">MEMBERS CLUB</span></div>
+            <div class="mt-r-brand"><img src="/assets/brand.webp" alt="Mom’s Touch" width="245" height="32"></div>
             <div class="mt-r-row"><span class="mt-r-label">To</span><span class="mt-r-value"><strong id="mtRToName">Mom’s Touch Members Club</strong><br><span class="mt-r-sub" id="mtRToSub">Add Funds</span></span></div>
             <div class="mt-r-row"><span class="mt-r-label">From</span><span class="mt-r-value"><strong id="mtRUserName">—</strong><br><span class="mt-r-sub" id="mtRMethod">Bank transfer</span></span></div>
             <div class="mt-r-row"><span class="mt-r-label">Fee</span><span class="mt-r-value" id="mtRFee">₱0.00</span></div>
@@ -199,8 +199,19 @@
     return lines.length ? lines : ['—'];
   }
 
-  function createReceiptCanvas() {
+  function loadBrandLogo() {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('The receipt logo could not be loaded.'));
+      image.src = '/assets/brand.webp';
+    });
+  }
+
+  async function createReceiptCanvas() {
     if (!activeReceipt) throw new Error('There is no receipt to share.');
+
+    const brandLogo = await loadBrandLogo();
 
     const width = 1080;
     const padding = 96;
@@ -249,12 +260,7 @@
     context.shadowBlur = 0;
     context.shadowOffsetY = 0;
 
-    context.fillStyle = '#9c7832';
-    context.font = '800 30px Arial, sans-serif';
-    context.fillText('MOM’S TOUCH', padding, 132);
-    context.fillStyle = '#c58e10';
-    context.font = '700 19px Arial, sans-serif';
-    context.fillText('MEMBERS CLUB', padding, 165);
+    context.drawImage(brandLogo, padding, 98, 490, 64);
     context.strokeStyle = '#f0eee8';
     context.lineWidth = 2;
     context.beginPath();
@@ -361,7 +367,8 @@
     const button = document.getElementById('mtRShare');
     button.disabled = true;
     try {
-      const image = await canvasToBlob(createReceiptCanvas());
+      const canvas = await createReceiptCanvas();
+      const image = await canvasToBlob(canvas);
       const file = new File([image], receiptFileName(), { type: 'image/png' });
       const title = activeReceipt.type === 'investment' ? "Mom's Touch Investment Receipt" : "Mom's Touch Add Funds Receipt";
 
