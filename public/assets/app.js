@@ -7,6 +7,7 @@ const cash=c=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP',min
 const imageUrl=image=>image.startsWith('/')?image:`/assets/${image}`;
 const native=!!window.PORTAL_CONFIG?.laravel;let serverError=false;
 const plans=investmentPlanDefinitions;
+const depositPlanRanges=plans.map((plan,index)=>({id:plan.id,label:plan.name.replace('Mom’s ',''),minimum:plan.min,maximum:plans[index+1]?plans[index+1].min-1:null}));
 const events=[{id:1,title:'Meet your new favorite: the Deep Cheese Burger',tag:'FRESH FROM THE KITCHEN',headline:'A little crunch. A lot to love.',desc:'Crispy chicken, rich cheese, and a little Mom’s Touch. Explore a comforting new favorite, made for the moments that deserve something good.',image:'burger.webp',style:'yellow',date:'November 17 – 30, 2026',status:'ongoing',sticker:'THE GOOD STUFF'},{id:2,title:'Good food. Even better company.',tag:'BETTER TOGETHER',headline:'Bring your favorite people.',desc:'Some things taste better together. Discover chicken favorites made for sharing with the people who make your day.',image:'chicken.webp',style:'peach',date:'November 15 – December 15, 2026',status:'ongoing',sticker:'MADE TO SHARE'},{id:3,title:'A warm welcome to the Members Club',tag:'A LITTLE SOMETHING FOR YOU',headline:'Your seat at the table.',desc:'Your member space brings wallet activity, investment allocations, events, and menu favorites into one thoughtfully simple place.',image:'fillet.webp',style:'brown',date:'November 1 – December 31, 2026',status:'ongoing',sticker:'MEMBERS CLUB'},{id:4,title:'The crunch that started it all',tag:'MEMBER MOMENTS',headline:'Good memories. Great bites.',desc:'A look back at our illustrative launch-week celebration. Explore what’s coming next in the ongoing events tab.',image:'burger.webp',style:'sage',date:'October 20 – 31, 2026',status:'ended',sticker:'EVENT ENDED'},{id:5,title:'A side of happiness',tag:'LITTLE EXTRAS',headline:'A little extra happiness.',desc:'Our illustrative side-dish showcase has ended. Browse the menu to discover your next favorite.',image:'fries.webp',style:'peach',date:'October 1 – 15, 2026',status:'ended',sticker:'EVENT ENDED'}];
 const koreaRafflePromotion={id:'korea-raffle',title:'Mom’s Touch — Your Ticket to Korea',tag:'MEMBER PROMOTION',headline:'Your ticket to Korea.',desc:'Invest. Claim daily. Get a chance to win a 3-day, all-expenses-paid trip to South Korea.',image:'/assets/korea-raffle-card.jpg',imageAlt:'South Korean palace and city at sunset',style:'brown',fullImage:true,date:'November 27, 2026 – February 27, 2027',sticker:'CLAIM DAILY',href:'/moms-touch-korea-raffle.html'};
 const homeScreenBonusPromotion={title:'A little bonus for your Home Screen',tag:'MEMBER REWARD',headline:'Claim ₱200.',desc:'Open Mom’s Touch from your phone’s Home Screen to claim a one-time wallet bonus.',image:'burger.webp',imageAlt:'Mom’s Touch chicken burger',style:'yellow',date:'One-time member reward',sticker:'₱200 BONUS'};
@@ -228,7 +229,10 @@ function amountModal(type,planId='select'){
  if(type==='withdraw'&&!(state.withdrawal_accounts||[]).length){go('account');toast('Add a withdrawal account before requesting a withdrawal.');return;}
  const deposit=type==='deposit';
  const payoutOptions=(state.withdrawal_accounts||[]).map(account=>`<option value="${esc(account.id)}">${account.type==='e_wallet'?'E-wallet':'Bank'} · ${esc(account.provider)} · ${esc(account.account_holder)} · ••••${esc(account.last_four)}</option>`).join('');
- openModal(`<h2 id="dialog-title">${deposit?'Request a deposit.':'Request a withdrawal.'}</h2><p>${deposit?'Enter at least ₱5,000, then choose BPI, Landbank, or Security Bank to view the payment QR.':'Choose a saved payout account. The selected details will be included with this request for admin review.'}</p><form id="money-form" data-type="${type}" data-request-id="${crypto.randomUUID()}">${deposit?'':`<div class="field"><label for="withdrawal-account-choice">Send withdrawal to</label><select id="withdrawal-account-choice" name="withdrawal_account_id" required>${payoutOptions}</select><a class="btn-link" href="#/account">Manage saved accounts</a></div>`}<div class="field"><label for="money-amount">Amount in Philippine Pesos</label><input id="money-amount" name="amount" type="text" inputmode="decimal" placeholder="${deposit?'5000.00':'0.00'}" required maxlength="12" autocomplete="off"></div><div class="amount-presets">${(deposit?[5000,10000,25000]:[1000,5000,10000]).map(a=>`<button type="button" data-action="preset" data-id="${a}">${short(a*100)}</button>`).join('')}</div>${deposit?'':`<div class="detail-row" style="margin-bottom:20px"><span>Available balance</span><strong>${cash(state.wallet.balance)}</strong></div>`}<div class="field"><label for="wallet-request-note">Reference or note (optional)</label><input id="wallet-request-note" name="note" maxlength="500" placeholder="A short note for the reviewing admin"></div><div class="form-message" role="status"></div><button class="btn btn-primary" type="submit">${deposit?'Continue to bank selection':'Submit withdrawal request'}${I('arrow')}</button><p class="fineprint">For deposits, complete payment using the selected bank QR and keep your receipt. The minimum add-funds request is ₱5,000, and the deposit remains pending until an admin verifies it. Withdrawals remain pending for admin review.</p></form>`);
+ const amountChoices=deposit
+  ?`<div class="amount-presets deposit-plan-presets" role="group" aria-label="Choose a deposit plan">${depositPlanRanges.map(plan=>`<button type="button" data-action="deposit-plan" data-id="${plan.id}" aria-pressed="false">${plan.label}</button>`).join('')}</div><input type="hidden" name="deposit_plan"><p id="deposit-plan-range" class="deposit-plan-range" role="status" aria-live="polite">Choose a plan to see its allowed amount range.</p>`
+  :`<div class="amount-presets">${[1000,5000,10000].map(a=>`<button type="button" data-action="preset" data-id="${a}">${short(a*100)}</button>`).join('')}</div>`;
+ openModal(`<h2 id="dialog-title">${deposit?'Request a deposit.':'Request a withdrawal.'}</h2><p>${deposit?'Choose Select, Prime, or Signature to see the allowed amount range, then select a bank to view the payment QR.':'Choose a saved payout account. The selected details will be included with this request for admin review.'}</p><form id="money-form" data-type="${type}" data-request-id="${crypto.randomUUID()}">${deposit?'':`<div class="field"><label for="withdrawal-account-choice">Send withdrawal to</label><select id="withdrawal-account-choice" name="withdrawal_account_id" required>${payoutOptions}</select><a class="btn-link" href="#/account">Manage saved accounts</a></div>`}<div class="field"><label for="money-amount">Amount in Philippine Pesos</label><input id="money-amount" name="amount" type="${deposit?'number':'text'}" inputmode="decimal" ${deposit?'step="0.01" disabled':''} placeholder="${deposit?'Select a plan first':'0.00'}" required maxlength="${deposit?'17':'12'}" autocomplete="off"></div>${amountChoices}${deposit?'':`<div class="detail-row" style="margin-bottom:20px"><span>Available balance</span><strong>${cash(state.wallet.balance)}</strong></div>`}<div class="field"><label for="wallet-request-note">Reference or note (optional)</label><input id="wallet-request-note" name="note" maxlength="500" placeholder="A short note for the reviewing admin"></div><div class="form-message" role="status"></div><button class="btn btn-primary" type="submit">${deposit?'Continue to bank selection':'Submit withdrawal request'}${I('arrow')}</button><p class="fineprint">For deposits, complete payment using the selected bank QR and keep your receipt. The deposit remains pending until an admin verifies it. Withdrawals remain pending for admin review.</p></form>`);
 }
 
 function openDepositBankModal(data){
@@ -264,6 +268,7 @@ async function submitDepositRequest(button){
   const body=new FormData();
   body.append('type','deposit');
   body.append('amount',pending.amount);
+  body.append('deposit_plan',pending.planId);
   body.append('request_id',pending.requestId);
   body.append('note',pending.note);
   body.append('payment_method',pending.bank);
@@ -318,6 +323,26 @@ if(action==='claim-home-screen-bonus'){
 }
 if(action==='invest'){if(el.closest('.earning-plan')){animateInvestmentChoice(el,id);return;}amountModal(action,id);return;}
 if(['deposit','withdraw'].includes(action)){amountModal(action,id);return;}
+if(action==='deposit-plan'){
+ const form=el.closest('#money-form');
+ const plan=depositPlanRanges.find(item=>item.id===id);
+ if(!form||form.dataset.type!=='deposit'||!plan)return;
+ const input=form.elements.amount;
+ form.elements.deposit_plan.value=plan.id;
+ input.disabled=false;
+ input.min=(plan.minimum/100).toFixed(2);
+ if(plan.maximum===null)input.removeAttribute('max');else input.max=(plan.maximum/100).toFixed(2);
+ input.value=(plan.minimum/100).toFixed(2);
+ form.querySelectorAll('[data-action="deposit-plan"]').forEach(button=>{
+  const selected=button.dataset.id===plan.id;
+  button.classList.toggle('active',selected);
+  button.setAttribute('aria-pressed',String(selected));
+ });
+ const range=form.querySelector('#deposit-plan-range');
+ range.textContent=`${plan.label}: ${cash(plan.minimum)}${plan.maximum===null?' and above':`–${cash(plan.maximum)}`}.`;
+ input.focus();
+ return;
+}
 if(action==='deposit-bank'){showDepositQr(id);return;}
 if(action==='deposit-confirm'){submitDepositRequest(el);return;}
 if(action==='franchise-signin'){go('login?return=franchising');return;}
@@ -372,9 +397,12 @@ if(form.id==='franchise-form'){await submitFranchiseApplication(form,data);}
 if(form.id==='withdrawal-account-form'){const response=await api('withdrawal-accounts','POST',data);state.withdrawal_accounts=response.withdrawal_accounts;render();toast('Withdrawal account saved.');}
 if(form.id==='money-form'){
  if(form.dataset.type==='deposit'){
+  const plan=depositPlanRanges.find(item=>item.id===data.deposit_plan);
+  if(!plan)throw new Error('Choose a deposit plan before entering an amount.');
   const amount=moneyCents(data.amount.trim());
-  if(amount<500000||amount>100000000)throw new Error('Add at least ₱5,000.00 and no more than ₱1,000,000.00.');
-  openDepositBankModal({amount:data.amount.trim(),note:(data.note||'').trim(),requestId:form.dataset.requestId});return;
+  if(!amount)throw new Error('Enter a valid amount using up to two decimal places.');
+  if(amount<plan.minimum||(plan.maximum!==null&&amount>plan.maximum))throw new Error(`The ${plan.label} amount must be ${cash(plan.minimum)}${plan.maximum===null?' or more':` to ${cash(plan.maximum)}`}.`);
+  openDepositBankModal({amount:data.amount.trim(),planId:plan.id,note:(data.note||'').trim(),requestId:form.dataset.requestId});return;
  }
  const result=await applyTransaction(form.dataset.type,data.amount,data.plan,form.dataset.requestId,data.note||'',data.withdrawal_account_id||null);
  closeModal();render();

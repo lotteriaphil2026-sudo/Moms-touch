@@ -512,3 +512,6 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 .google-login-button:active{transform:translateY(1px)}
 .google-login-button:focus-visible{outline:3px solid rgba(49,64,95,.5);outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.google-login-card,.google-login-button{transition:none}}
+.deposit-plan-presets button.active{background:#fff0c7;border-color:#e4b54e;color:#765615;box-shadow:0 0 0 2px rgba(228,181,78,.15)}
+.deposit-plan-range{font-size:10px;line-height:1.6;color:#8f7955;margin:-13px 0 20px}
+.amount-presets button:focus-visible{outline:2px solid #b68b35;outline-offset:2px}

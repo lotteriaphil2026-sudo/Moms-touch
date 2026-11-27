@@ -33,6 +33,7 @@ class DepositBankFlowTest extends TestCase
     {
         return $this->post('/portal/transactions', [
             ...$payload,
+            'deposit_plan' => $payload['deposit_plan'] ?? 'select',
             'receipt' => $this->receiptUpload(),
         ], ['Accept' => 'application/json']);
     }
@@ -107,6 +108,29 @@ class DepositBankFlowTest extends TestCase
         $this->submitDeposit([...$payload, 'amount' => '5000', 'request_id' => (string) Str::uuid()])
             ->assertOk()
             ->assertJsonPath('submitted_request.amount', 500000);
+    }
+
+    public function test_deposit_plan_ranges_are_enforced_and_signature_has_no_upper_cap(): void
+    {
+        $member = $this->account();
+        $submit = fn (string $plan, string $amount) => $this->actingAs($member)->submitDeposit([
+            'type' => 'deposit',
+            'amount' => $amount,
+            'deposit_plan' => $plan,
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ]);
+
+        $submit('select', '5000.00')->assertOk();
+        $submit('select', '49999.99')->assertOk();
+        $submit('select', '50000')->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $submit('select', '51000')->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $submit('prime', '49999.99')->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $submit('prime', '50000')->assertOk();
+        $submit('prime', '249999.99')->assertOk();
+        $submit('prime', '250000')->assertUnprocessable()->assertJsonValidationErrors('amount');
+        $submit('signature', '250000')->assertOk();
+        $submit('signature', '1000001.00')->assertOk();
     }
 
     public function test_configured_bank_deposit_uses_real_qr_mode(): void
@@ -208,6 +232,7 @@ class DepositBankFlowTest extends TestCase
         $this->actingAs($member)->post('/portal/transactions', [
             'type' => 'deposit',
             'amount' => '5000',
+            'deposit_plan' => 'select',
             'payment_method' => 'bpi',
             'request_id' => (string) Str::uuid(),
             'receipt' => UploadedFile::fake()->create('receipt.txt', 10, 'text/plain'),
@@ -224,6 +249,7 @@ class DepositBankFlowTest extends TestCase
         $this->actingAs($dummy)->postJson('/portal/transactions', [
             'type' => 'deposit',
             'amount' => '5000',
+            'deposit_plan' => 'select',
             'payment_method' => 'bpi',
             'request_id' => (string) Str::uuid(),
         ])

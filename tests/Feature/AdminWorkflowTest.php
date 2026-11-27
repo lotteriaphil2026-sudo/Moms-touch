@@ -18,7 +18,7 @@ class AdminWorkflowTest extends TestCase
  }
  private function walletRequest(User $u,string $type,string $amount,?string $id=null): WalletRequest {$account=$type==='withdraw'?WithdrawalAccount::create(['user_id'=>$u->id,'type'=>'bank','provider'=>'BPI','account_holder'=>$u->name,'account_number'=>'1234567890']):null;return app(WalletRequestService::class)->submit($u,$type,$amount,$id??(string)Str::uuid(),'Member request',null,$account);}
  private function review(WalletRequest $r,string $decision='approve'){return $this->postJson('/portal/admin/requests/'.$r->id.'/review',['decision'=>$decision,'note'=>'Reviewed and checked']);}
- private function submitDeposit(array $payload){return $this->post('/portal/transactions',[...$payload,'receipt'=>$this->receiptUpload()],['Accept'=>'application/json']);}
+ private function submitDeposit(array $payload){return $this->post('/portal/transactions',[...$payload,'deposit_plan'=>$payload['deposit_plan']??'select','receipt'=>$this->receiptUpload()],['Accept'=>'application/json']);}
  private function receiptUpload(): UploadedFile{return UploadedFile::fake()->createWithContent('receipt.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lGkAAAAASUVORK5CYII='));}
  private function send(User $u,string $kind,array $data=[]){return $this->postJson('/portal/admin/users/'.$u->id.'/'.$kind,[...['amount'=>'5000.25','note'=>'Member credit','request_id'=>(string)Str::uuid()],...$data]);}
  public function test_guests_and_members_cannot_use_any_admin_endpoint(): void {

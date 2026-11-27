@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
-use App\Services\{HomeScreenBonusService, InterestAccrualService, WalletRequestService, WalletService};
+use App\Services\{HomeScreenBonusService, InterestAccrualService, PortalMoney, WalletRequestService, WalletService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -100,7 +100,8 @@ class PortalController extends Controller
     {
         $input = $request->validate([
             'type' => ['required', Rule::in(['deposit', 'withdraw', 'invest'])],
-            'amount' => ['required', 'string', 'max:12', 'regex:/^\d{1,7}(\.\d{1,2})?$/'],
+            'amount' => ['required', 'string', 'max:17', 'regex:/^\d{1,14}(\.\d{1,2})?$/'],
+            'deposit_plan' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(array_keys(config('portal.plans')))],
             'plan' => ['nullable', 'required_if:type,invest', Rule::in(array_keys(config('portal.plans')))],
             'payment_method' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(['landbank', 'bpi', 'security_bank'])],
             'withdrawal_account_id' => ['nullable', 'required_if:type,withdraw', 'prohibited_unless:type,withdraw', 'integer', 'min:1'],
@@ -126,6 +127,7 @@ class PortalController extends Controller
                 ],
             ]);
         } elseif ($input['type'] === 'deposit') {
+            $this->validateDepositPlanAmount($input['deposit_plan'], $input['amount']);
             $depositRequest = $requests->submit($request->user(), 'deposit', $input['amount'], $input['request_id'], $input['note'] ?? null, $input['payment_method'], null, $request->file('receipt'));
             return response()->json([
                 ...$this->payloadForUser($request->user()),
@@ -140,6 +142,30 @@ class PortalController extends Controller
         }
         return $this->state($request);
     }
+
+    private function validateDepositPlanAmount(string $plan, string $amount): void
+    {
+        $plans = config('portal.plans');
+        $planIds = array_keys($plans);
+        $planIndex = array_search($plan, $planIds, true);
+        $minimum = $plans[$plan]['minimum_cents'];
+        $nextPlanId = $planIds[$planIndex + 1] ?? null;
+        $maximum = $nextPlanId === null ? null : $plans[$nextPlanId]['minimum_cents'] - 1;
+        $amountCents = PortalMoney::cents($amount, null);
+
+        if ($amountCents < $minimum || ($maximum !== null && $amountCents > $maximum)) {
+            $name = str_replace('Mom’s ', '', $plans[$plan]['name']);
+            $minimumText = '₱'.number_format($minimum / 100, 2, '.', ',');
+            $range = $maximum === null
+                ? 'at least '.$minimumText
+                : 'between '.$minimumText.' and ₱'.number_format($maximum / 100, 2, '.', ',');
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'amount' => $name.' deposits must be '.$range.'.',
+            ]);
+        }
+    }
+
     public function profile(Request $request): JsonResponse
     {
         $submittedReferralCode = trim((string) $request->input('referral_code'));

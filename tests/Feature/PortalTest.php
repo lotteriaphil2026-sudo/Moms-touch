@@ -29,6 +29,7 @@ class PortalTest extends TestCase
             'request_id' => $requestId,
         ];
         if ($type === 'deposit') {
+            $payload['deposit_plan'] = 'select';
             $payload['payment_method'] = 'bpi';
             $payload['receipt'] = UploadedFile::fake()->createWithContent(
                 'receipt.png',

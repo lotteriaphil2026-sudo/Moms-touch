@@ -19,7 +19,7 @@ class WalletRequestService
         if ($paymentMethod !== null && !in_array($paymentMethod, ['landbank', 'bpi', 'security_bank'], true)) {
             throw ValidationException::withMessages(['payment_method' => 'Choose a supported bank.']);
         }
-        $cents = PortalMoney::cents($amount);
+        $cents = PortalMoney::cents($amount, $type === 'deposit' ? null : 100000000);
         if ($type === 'deposit' && $cents < 500000) {
             throw ValidationException::withMessages(['amount' => 'The minimum add-funds amount is ₱5,000.']);
         }
