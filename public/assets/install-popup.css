@@ -243,6 +243,28 @@
   outline-offset: 3px;
 }
 
+.mt-install-dialog {
+  border: 1px solid rgba(48, 44, 36, .08);
+  box-shadow: 0 3px 9px rgba(48, 43, 36, .06), 0 24px 64px rgba(16, 13, 7, .24);
+}
+
+.mt-install-primary {
+  border: 1px solid rgba(48, 44, 36, .08);
+  border-radius: 14px;
+  box-shadow: 0 2px 5px rgba(48, 43, 36, .08), 0 8px 16px rgba(48, 43, 36, .12);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.mt-install-primary:hover {
+  box-shadow: 0 4px 8px rgba(48, 43, 36, .1), 0 11px 20px rgba(48, 43, 36, .14);
+  filter: brightness(1.02);
+}
+
+.mt-install-primary:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 3px rgba(48, 43, 36, .12);
+}
+
 @media (max-height: 640px) {
   .mt-install-dialog {
     top: 50%;
@@ -277,7 +299,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mt-install-backdrop,
-  .mt-install-dialog {
+  .mt-install-dialog,
+  .mt-install-primary {
     transition: none;
   }
 }

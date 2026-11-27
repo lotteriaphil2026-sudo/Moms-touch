@@ -217,3 +217,33 @@
   .admin-content .admin-stat,.admin-content .admin-quick-links>a,.admin-content .filter-chip,.admin-content .btn,.admin-content .btn-link,.admin-content .admin-member-section-button,.admin-mobile-nav a{transition:none}
   .admin-content .admin-stat:hover,.admin-content .admin-quick-links>a:hover,.admin-content .filter-chip:hover,.admin-content .btn:not(:disabled):hover,.admin-content .admin-member-section-button:hover,.admin-mobile-nav a:active{transform:none}
 }
+.admin-content .admin-stat,
+.admin-content .admin-member-summary,
+.admin-content .admin-member-balances>div,
+.admin-content .admin-member-plans>article,
+.admin-content .admin-application,
+.admin-content .admin-referral-panel,
+.admin-content .admin-quick-links>a{
+  border-radius:17px;
+  box-shadow:0 2px 7px rgba(48,43,36,.035),0 12px 28px rgba(48,43,36,.065);
+}
+.admin-content .admin-stat{padding:24px}
+.modal #admin-money-form :is(input,select,textarea),
+.modal #admin-review-form :is(select,textarea){
+  border-color:#e7e1d6;
+  border-radius:10px;
+  box-shadow:inset 0 1px 2px rgba(48,43,36,.025);
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.modal #admin-money-form :is(input,select,textarea):focus,
+.modal #admin-review-form :is(select,textarea):focus{
+  border-color:#e5ad39;
+  box-shadow:0 0 0 4px rgba(244,173,25,.13),inset 0 1px 2px rgba(48,43,36,.025);
+}
+@media(max-width:600px){
+  .admin-content .admin-stat{padding:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  .modal #admin-money-form :is(input,select,textarea),
+  .modal #admin-review-form :is(select,textarea){transition:none}
+}
