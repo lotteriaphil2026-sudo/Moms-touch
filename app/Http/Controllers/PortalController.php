@@ -118,7 +118,7 @@ class PortalController extends Controller
             'request_id' => ['required', 'uuid'],
             'note' => ['nullable', 'string', 'max:500'],
             'receipt' => [Rule::requiredIf(fn () => $request->input('type') === 'deposit' && ! $request->user()->is_dummy),
-                'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048', 'prohibited_unless:type,deposit'],
+                'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240', 'prohibited_unless:type,deposit'],
         ]);
         if ($input['type'] === 'invest') {
             $wallets->transact($request->user(), 'invest', $input['amount'], $input['plan'], $input['request_id']);

@@ -38,12 +38,18 @@ class DepositBankFlowTest extends TestCase
         ], ['Accept' => 'application/json']);
     }
 
-    private function receiptUpload(): UploadedFile
+    private function receiptUpload(?int $sizeKilobytes = null): UploadedFile
     {
-        return UploadedFile::fake()->createWithContent(
+        $upload = UploadedFile::fake()->createWithContent(
             'receipt.png',
             base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lGkAAAAASUVORK5CYII=')
         );
+
+        if ($sizeKilobytes !== null) {
+            $upload->size($sizeKilobytes);
+        }
+
+        return $upload;
     }
 
     public function test_demo_bank_deposit_is_saved_as_test_only_and_cannot_be_approved(): void
@@ -224,6 +230,7 @@ class DepositBankFlowTest extends TestCase
         $payload = [
             'type' => 'deposit',
             'amount' => '5000',
+            'deposit_plan' => 'select',
             'payment_method' => 'bpi',
             'request_id' => (string) Str::uuid(),
         ];
@@ -264,6 +271,35 @@ class DepositBankFlowTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('receipt');
         $this->assertDatabaseCount('wallet_requests', 0);
+    }
+
+    public function test_deposit_receipts_accept_ten_megabytes_and_reject_larger_files(): void
+    {
+        $member = $this->account();
+        $payload = [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'deposit_plan' => 'select',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ];
+
+        $this->actingAs($member)->post('/portal/transactions', [
+            ...$payload,
+            'receipt' => $this->receiptUpload(10240),
+        ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('submitted_request.has_receipt', true);
+
+        $this->post('/portal/transactions', [
+            ...$payload,
+            'request_id' => (string) Str::uuid(),
+            'receipt' => $this->receiptUpload(10241),
+        ], ['Accept' => 'application/json'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('receipt');
+
+        $this->assertDatabaseCount('wallet_requests', 1);
     }
 
     public function test_dummy_member_can_submit_a_deposit_without_a_receipt(): void
