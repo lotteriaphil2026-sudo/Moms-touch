@@ -53,6 +53,10 @@ class WalletRequestService
                         if (!is_string($storedReceiptPath) || $storedReceiptPath === '') {
                             throw new RuntimeException('The receipt image could not be saved. Please try again.');
                         }
+                        if (!Storage::disk('local')->exists($storedReceiptPath)) {
+                            $storedReceiptPath = null;
+                            throw new RuntimeException('The receipt image could not be persisted. Please try again.');
+                        }
                         $existing->update(['receipt_path' => $storedReceiptPath]);
                     }
                     return [$existing, false];
@@ -82,6 +86,10 @@ class WalletRequestService
                     $storedReceiptPath = $receipt->store('deposit-receipts/'.$user->id, 'local');
                     if (!is_string($storedReceiptPath) || $storedReceiptPath === '') {
                         throw new RuntimeException('The receipt image could not be saved. Please try again.');
+                    }
+                    if (!Storage::disk('local')->exists($storedReceiptPath)) {
+                        $storedReceiptPath = null;
+                        throw new RuntimeException('The receipt image could not be persisted. Please try again.');
                     }
                     $request->update(['receipt_path' => $storedReceiptPath]);
                 }

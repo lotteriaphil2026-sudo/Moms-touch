@@ -257,6 +257,30 @@ class DepositBankFlowTest extends TestCase
         $this->actingAs($member)->get('/portal/admin/requests/'.$deposit->id.'/receipt')->assertForbidden();
     }
 
+    public function test_admin_receipt_logs_ignore_missing_stored_files(): void
+    {
+        $member = $this->account();
+        $admin = $this->account(true);
+
+        $payload = [
+            'type' => 'deposit',
+            'amount' => '5000',
+            'deposit_plan' => 'select',
+            'payment_method' => 'bpi',
+            'request_id' => (string) Str::uuid(),
+        ];
+
+        $this->actingAs($member)->submitDeposit($payload)->assertOk();
+        $deposit = WalletRequest::firstOrFail();
+        Storage::disk('local')->assertExists($deposit->receipt_path);
+        Storage::disk('local')->delete($deposit->receipt_path);
+
+        $this->actingAs($admin)->getJson('/portal/admin/receipt-logs')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonCount(0, 'items');
+    }
+
     public function test_deposit_receipt_rejects_non_image_uploads(): void
     {
         $member = $this->account();

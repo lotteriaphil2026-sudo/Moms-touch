@@ -237,9 +237,10 @@ class AdminController extends Controller
             ->whereNotNull('receipt_path')
             ->latest('id')
             ->paginate(25);
-
-        return response()->json([
-            'items' => $page->getCollection()->map(fn (WalletRequest $r) => [
+        $disk = Storage::disk('local');
+        $items = $page->getCollection()
+            ->filter(fn (WalletRequest $r) => $disk->exists($r->receipt_path))
+            ->map(fn (WalletRequest $r) => [
                 'id' => $r->id,
                 'reference' => $r->reference,
                 'amount' => $r->amount_cents,
@@ -249,7 +250,11 @@ class AdminController extends Controller
                 'created_at' => $r->created_at->toIso8601String(),
                 'receipt_url' => url('/portal/admin/requests/'.$r->id.'/receipt'),
                 'user' => $r->user?->only(['id', 'name', 'email']),
-            ]),
+            ])
+            ->values();
+
+        return response()->json([
+            'items' => $items,
             'page' => $page->currentPage(),
             'last_page' => $page->lastPage(),
             'total' => $page->total(),
