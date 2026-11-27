@@ -591,15 +591,23 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
   width:min(520px,100%);
   padding:22px;
 }
+.deposit-qr-modal .deposit-qr-accessible-title{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
 .deposit-qr-modal .deposit-test-qr{
   display:block;
-  width:min(100%,380px);
+  width:100%;
   max-height:min(48dvh,430px);
   height:auto;
-  margin:12px auto 16px;
-  border:1px solid #eee8dd;
-  border-radius:14px;
-  background:#fff;
+  margin:36px auto 16px;
   object-fit:contain;
 }
 .deposit-qr-details{
@@ -623,6 +631,14 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
   color:#81725c;
   font-size:12px;
   line-height:1.65;
+}
+.deposit-qr-details .demo-notice{
+  margin:0 0 12px;
+  padding:10px 12px;
+  border-radius:10px;
+  background:#fff0eb;
+  font-size:12px;
+  line-height:1.5;
 }
 .deposit-qr-details .field{
   margin-top:16px;
