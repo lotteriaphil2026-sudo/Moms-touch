@@ -11,6 +11,7 @@
   let previousOverflow = '';
   let previousAppInert = false;
   let onHelp = null;
+  let shareFeedbackTimer = null;
 
   function mount() {
     if (overlay) return;
@@ -36,7 +37,7 @@
             <button class="mt-r-help" id="mtRHelp" type="button"><svg viewBox="0 0 24 24"><path d="M4 13v-2a8 8 0 0 1 16 0v2"/><rect x="2.5" y="12" width="4" height="7" rx="1.5"/><rect x="17.5" y="12" width="4" height="7" rx="1.5"/><path d="M20 19a5 5 0 0 1-5 3h-3"/></svg><span>Need help?</span><span class="mt-r-chevron">›</span></button>
           </div>
           <div class="mt-r-footer">
-            <button type="button" id="mtRShare" class="mt-r-share"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7 8m5-5 5 5M4 15v5h16v-5"/></svg><span>Share receipt</span></button>
+            <button type="button" id="mtRShare" class="mt-r-share"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7 8m5-5 5 5M4 15v5h16v-5"/></svg><span aria-live="polite">Share receipt</span></button>
             <button type="button" id="mtRPrint" class="mt-r-secondary">Print / Save as PDF</button>
           </div>
         </section>
@@ -154,33 +155,236 @@
     if (lastFocus?.isConnected) lastFocus.focus();
   }
 
-  function summary() {
-    if (!activeReceipt) return '';
-    const receiptType = activeReceipt.type === 'investment' ? 'Investment' : 'Add Funds';
-    const methodLabel = activeReceipt.type === 'investment' ? 'Source' : 'Bank';
-    return `MOM'S TOUCH - ${receiptType} Receipt\nStatus: ${activeReceipt.status}\nAmount: ${formatMoney(activeReceipt.amount)}\nFrom: ${activeReceipt.userName}\n${methodLabel}: ${activeReceipt.method}\nFee: ${formatMoney(activeReceipt.fee)}\nTotal: ${formatMoney(activeReceipt.amount + activeReceipt.fee)}\nReference No.: ${activeReceipt.reference}\nDate: ${activeReceipt.date}\n${document.getElementById('mtRNote').textContent}`;
+  function roundedRect(context, x, y, width, height, radius) {
+    context.beginPath();
+    context.moveTo(x + radius, y);
+    context.arcTo(x + width, y, x + width, y + height, radius);
+    context.arcTo(x + width, y + height, x, y + height, radius);
+    context.arcTo(x, y + height, x, y, radius);
+    context.arcTo(x, y, x + width, y, radius);
+    context.closePath();
+  }
+
+  function wrapText(context, value, maxWidth) {
+    const lines = [];
+    let line = '';
+
+    for (const word of String(value).split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (context.measureText(candidate).width <= maxWidth) {
+        line = candidate;
+        continue;
+      }
+
+      if (line) lines.push(line);
+      if (context.measureText(word).width <= maxWidth) {
+        line = word;
+        continue;
+      }
+
+      line = '';
+      let fragment = '';
+      for (const character of Array.from(word)) {
+        if (fragment && context.measureText(fragment + character).width > maxWidth) {
+          lines.push(fragment);
+          fragment = character;
+        } else {
+          fragment += character;
+        }
+      }
+      line = fragment;
+    }
+
+    if (line) lines.push(line);
+    return lines.length ? lines : ['—'];
+  }
+
+  function createReceiptCanvas() {
+    if (!activeReceipt) throw new Error('There is no receipt to share.');
+
+    const width = 1080;
+    const padding = 96;
+    const innerWidth = width - padding * 2;
+    const measureCanvas = document.createElement('canvas');
+    const measureContext = measureCanvas.getContext('2d');
+    if (!measureContext) throw new Error('Receipt image rendering is unavailable.');
+
+    const rows = [
+      ['To', document.getElementById('mtRToName').textContent],
+      ['From', activeReceipt.userName],
+      [activeReceipt.type === 'investment' ? 'Source' : 'Bank', activeReceipt.method],
+      ['Fee', formatMoney(activeReceipt.fee)],
+      ['Total', formatMoney(activeReceipt.amount + activeReceipt.fee)],
+      ['Status', activeReceipt.status],
+      ['Reference No.', activeReceipt.reference],
+      ['Date', activeReceipt.date],
+    ];
+    const rowLayouts = rows.map(([label, value]) => {
+      measureContext.font = '600 27px Arial, sans-serif';
+      const lines = wrapText(measureContext, value, innerWidth);
+      return { label, lines, height: Math.max(104, lines.length * 38 + 62) };
+    });
+
+    measureContext.font = '400 25px Arial, sans-serif';
+    const noteLines = wrapText(measureContext, document.getElementById('mtRNote').textContent, innerWidth - 48);
+    const rowTop = 520;
+    const noteTop = rowTop + rowLayouts.reduce((height, row) => height + row.height, 0) + 22;
+    const noteHeight = 62 + noteLines.length * 36 + 30;
+    const height = noteTop + noteHeight + 64;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Receipt image rendering is unavailable.');
+
+    context.fillStyle = '#f5f2ea';
+    context.fillRect(0, 0, width, height);
+    context.shadowColor = 'rgba(48, 43, 36, .12)';
+    context.shadowBlur = 28;
+    context.shadowOffsetY = 10;
+    roundedRect(context, 42, 40, width - 84, height - 80, 28);
+    context.fillStyle = '#fff';
+    context.fill();
+    context.shadowColor = 'transparent';
+    context.shadowBlur = 0;
+    context.shadowOffsetY = 0;
+
+    context.fillStyle = '#9c7832';
+    context.font = '800 30px Arial, sans-serif';
+    context.fillText('MOM’S TOUCH', padding, 132);
+    context.fillStyle = '#c58e10';
+    context.font = '700 19px Arial, sans-serif';
+    context.fillText('MEMBERS CLUB', padding, 165);
+    context.strokeStyle = '#f0eee8';
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(padding, 202);
+    context.lineTo(width - padding, 202);
+    context.stroke();
+
+    const title = activeReceipt.type === 'investment'
+      ? 'Investment receipt'
+      : activeReceipt.status === 'Paid · Confirmed' ? 'Payment confirmed' : 'Add funds request';
+    context.fillStyle = '#302b24';
+    context.font = '700 39px Arial, sans-serif';
+    context.fillText(title, padding, 275);
+    context.fillStyle = '#302b24';
+    context.font = '800 76px Arial, sans-serif';
+    context.fillText(formatMoney(activeReceipt.amount), padding, 372);
+
+    const statusColors = activeReceipt.status === 'Paid · Confirmed'
+      ? { background: '#edf4e8', text: '#4c7043' }
+      : activeReceipt.status === 'Not approved'
+        ? { background: '#faeae2', text: '#994d36' }
+        : { background: '#fff3d6', text: '#8c621b' };
+    context.font = '700 22px Arial, sans-serif';
+    const statusWidth = context.measureText(activeReceipt.status).width + 42;
+    roundedRect(context, padding, 405, statusWidth, 48, 24);
+    context.fillStyle = statusColors.background;
+    context.fill();
+    context.fillStyle = statusColors.text;
+    context.textBaseline = 'middle';
+    context.fillText(activeReceipt.status, padding + 21, 429);
+    context.textBaseline = 'alphabetic';
+
+    let y = rowTop;
+    for (const row of rowLayouts) {
+      context.fillStyle = '#78746b';
+      context.font = '500 22px Arial, sans-serif';
+      context.fillText(row.label, padding, y + 28);
+      context.fillStyle = '#2c2923';
+      context.font = '600 27px Arial, sans-serif';
+      context.textAlign = 'right';
+      row.lines.forEach((line, index) => context.fillText(line, width - padding, y + 66 + index * 38));
+      context.textAlign = 'left';
+      y += row.height;
+      context.strokeStyle = '#f0eee8';
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(padding, y - 1);
+      context.lineTo(width - padding, y - 1);
+      context.stroke();
+    }
+
+    roundedRect(context, padding, noteTop, innerWidth, noteHeight, 16);
+    context.fillStyle = '#fcf6e9';
+    context.fill();
+    context.fillStyle = '#736850';
+    context.font = '400 25px Arial, sans-serif';
+    noteLines.forEach((line, index) => context.fillText(line, padding + 24, noteTop + 54 + index * 36));
+
+    return canvas;
+  }
+
+  function canvasToBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      if (typeof canvas.toBlob !== 'function') {
+        reject(new Error('This browser cannot export receipt images.'));
+        return;
+      }
+      canvas.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('The receipt image could not be created.'));
+      }, 'image/png');
+    });
+  }
+
+  function receiptFileName() {
+    const reference = activeReceipt.reference.replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 80);
+    return `moms-touch-receipt-${reference || 'receipt'}.png`;
+  }
+
+  function downloadReceiptImage(file) {
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function setShareLabel(message) {
+    const label = document.querySelector('#mtRShare span');
+    if (!label) return;
+    window.clearTimeout(shareFeedbackTimer);
+    label.textContent = message;
+    shareFeedbackTimer = window.setTimeout(() => {
+      if (label.isConnected) label.textContent = 'Share receipt';
+    }, 2500);
   }
 
   async function share() {
-    const text = summary();
-    if (!text) return;
+    if (!activeReceipt) return;
+    const button = document.getElementById('mtRShare');
+    button.disabled = true;
     try {
-      if (navigator.share) {
-        const title = activeReceipt.type === 'investment' ? "Mom's Touch Investment Receipt" : "Mom's Touch Add Funds Receipt";
-        await navigator.share({ title, text });
-        return;
+      const image = await canvasToBlob(createReceiptCanvas());
+      const file = new File([image], receiptFileName(), { type: 'image/png' });
+      const title = activeReceipt.type === 'investment' ? "Mom's Touch Investment Receipt" : "Mom's Touch Add Funds Receipt";
+
+      if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+        try {
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ title, files: [file] });
+            return;
+          }
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+          console.warn('Receipt image sharing failed; downloading the image instead.', error);
+        }
       }
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-        const label = document.querySelector('#mtRShare span');
-        label.textContent = 'Receipt copied';
-        window.setTimeout(() => { label.textContent = 'Share receipt'; }, 2000);
-        return;
-      }
+
+      downloadReceiptImage(file);
+      setShareLabel('Receipt image saved');
     } catch (error) {
-      if (error.name === 'AbortError') return;
+      console.error('Receipt image could not be prepared for sharing.', error);
+      setShareLabel('Image unavailable');
+    } finally {
+      if (button?.isConnected) button.disabled = false;
     }
-    window.print();
   }
 
   function handleKeydown(event) {
