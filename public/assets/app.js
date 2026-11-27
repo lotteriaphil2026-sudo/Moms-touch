@@ -401,7 +401,7 @@ if(form.id==='auth-form'){
  if(!native)throw new Error('Sign-in is temporarily unavailable. Please check back soon.');
  const kind=form.dataset.kind;
  if(kind==='forgot'){await api('forgot-password','POST',{email:data.email});errorIn(form,'If an account exists for this email, a password reset link has been requested.',true);}
- else{const isNewSignup=kind==='register'||kind==='google-register',endpoint=kind==='register'?'register':kind==='google-register'?'google-register':'login';state=await api(endpoint,'POST',{...data,remember:!!data.remember});googleOnboardingProfile=null;if(state.user&&!state.user.is_admin&&!isNewSignup)window.MomsTouchInstall?.showForUser(state.user.id);go(isPortalAdmin()?'admin':authDestination());toast(isPortalAdmin()?'Welcome to administration.':'Welcome to your member space.');if(isNewSignup&&state.user&&!state.user.is_admin)window.setTimeout(openHomeScreenBonusWelcome,500);}
+ else{const isNewSignup=kind==='register'||kind==='google-register',endpoint=kind==='register'?'register':kind==='google-register'?'google-register':'login';state=await api(endpoint,'POST',{...data,remember:!!data.remember});if(state.user)startPresenceHeartbeat();googleOnboardingProfile=null;if(state.user&&!state.user.is_admin&&!isNewSignup)window.MomsTouchInstall?.showForUser(state.user.id);go(isPortalAdmin()?'admin':authDestination());toast(isPortalAdmin()?'Welcome to administration.':'Welcome to your member space.');if(isNewSignup&&state.user&&!state.user.is_admin)window.setTimeout(openHomeScreenBonusWelcome,500);}
 }
 }catch(err){errorIn(form,err.message);}finally{isLoading=false;if(submit.isConnected)submit.disabled=false;}});
 document.addEventListener('keydown',e=>{if(!currentModal)return;if(e.key==='Escape'){if(isLoading&&pendingDeposit?.bank)return;pendingDeposit=null;closeModal();return;}if(e.key==='Tab'){const elements=[...$('.modal').querySelectorAll('button,a,input,select,textarea,[tabindex="0"]')].filter(x=>!x.disabled&&x.getClientRects().length&&!x.closest('[hidden]'));const first=elements[0],last=elements.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement===$('.modal'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===$('.modal'))){e.preventDefault();first?.focus();}}});
@@ -418,11 +418,26 @@ function preloadSplashLogin(){
 async function init(){
  showPortalLoader(2000);
  splashLoginPending=preloadSplashLogin();
- if(native){try{state=await api('state');}catch{state=seed();serverError=true;}}
+ if(native){try{state=await api('state');if(state.user)startPresenceHeartbeat();}catch{state=seed();serverError=true;}}
  await loadGoogleOnboarding();
  splashPortalReady=true;
  render();
  if(state.user&&!state.user.is_admin)window.MomsTouchInstall?.showForUser(state.user.id);
  if(native)setInterval(refreshInvestmentEarnings,60000);
+}
+let presenceHeartbeatTimer;
+let presenceHeartbeatInFlight=false;
+async function sendPresenceHeartbeat(){
+ if(!native||!state.user||document.hidden||presenceHeartbeatInFlight)return;
+ presenceHeartbeatInFlight=true;
+ try{await api('presence','POST');}
+ catch(error){console.error('Member presence heartbeat failed.',error);}
+ finally{presenceHeartbeatInFlight=false;}
+}
+function startPresenceHeartbeat(){
+ if(!native||presenceHeartbeatTimer)return;
+ presenceHeartbeatTimer=window.setInterval(sendPresenceHeartbeat,30000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendPresenceHeartbeat();});
+ sendPresenceHeartbeat();
 }
 init();

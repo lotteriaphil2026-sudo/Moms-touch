@@ -148,6 +148,13 @@
 .admin-content .admin-search>div{padding:9px 11px 9px 16px;border-radius:13px;border-color:#e8e2d7;box-shadow:0 3px 10px rgba(48,43,36,.05)}
 .admin-content .admin-search input{min-height:42px}
 .admin-content .admin-member-overview{gap:20px}
+.admin-content .admin-table tbody tr.admin-member-online td{background:rgba(82, 190, 126, .14);backdrop-filter:blur(8px)}
+.admin-content .admin-table tbody tr.admin-member-online:hover td{background:rgba(82, 190, 126, .21)}
+.admin-online-status{display:inline-flex!important;align-items:center;gap:6px;width:max-content;padding:3px 8px;border-radius:999px;font-size:9px!important;line-height:1.4!important;margin-top:7px!important}
+.admin-online-status i{width:7px;height:7px;border-radius:50%;background:#a6a6a6}
+.admin-online-status.is-online{color:#237a46!important;background:rgba(68, 190, 112, .16);border:1px solid rgba(68, 190, 112, .28)}
+.admin-online-status.is-online i{background:#31a45a;box-shadow:0 0 0 3px rgba(49, 164, 90, .14)}
+.admin-online-status.is-offline{color:#827d73!important;background:rgba(130, 125, 115, .08);border:1px solid rgba(130, 125, 115, .15)}
 .admin-content .admin-member-summary{padding:29px;border-radius:19px}
 .admin-content .admin-member-balances{gap:13px}
 .admin-content .admin-member-balances>div{padding:22px 20px;border-radius:16px;box-shadow:0 2px 6px rgba(48,43,36,.04),0 10px 24px rgba(48,43,36,.07)}

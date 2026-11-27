@@ -55,6 +55,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'date_of_birth' => 'date:Y-m-d',
             'investment_nudge_sent_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_dummy' => 'boolean',

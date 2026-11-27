@@ -30,6 +30,7 @@ Route::prefix('portal')->group(function () {
     Route::post('/register', [AuthController::class, 'register'])->middleware(['guest', 'throttle:5,1']);
     Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware(['guest', 'throttle:5,1']);
     Route::middleware('auth')->group(function () {
+        Route::post('/presence', [PortalController::class, 'presence'])->middleware('throttle:120,1');
         Route::post('/promotions/home-screen-bonus/claim', [PromotionController::class, 'claimHomeScreenBonus'])->middleware('throttle:3,1');
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [PortalController::class, 'profile'])->middleware('throttle:20,1');

@@ -171,6 +171,16 @@ class AdminWorkflowTest extends TestCase
   $this->getJson('/portal/admin/users/'.$u->id)->assertOk()->assertJsonPath('user.id',$u->id)->assertJsonMissingPath('user.password')->assertJsonMissingPath('user.remember_token')->assertJsonStructure(['wallet','investments','transactions','wallet_requests','franchise_applications']);
   $this->getJson('/portal/admin/overview')->assertOk()->assertJsonPath('stats.members',2);$this->getJson('/portal/admin/audit')->assertOk()->assertJsonCount(0,'items');
  }
+ public function test_member_presence_is_private_and_admin_directory_only_receives_online_status(): void {
+  $member=$this->member();$admin=$this->member(true);
+  $this->postJson('/portal/presence')->assertUnauthorized();
+  $this->actingAs($member)->postJson('/portal/presence')->assertOk()->assertJsonPath('ok',true);
+  $this->assertNotNull($member->fresh()->last_seen_at);
+  $this->actingAs($admin)->getJson('/portal/admin/users?search='.urlencode($member->email))->assertOk()
+   ->assertJsonPath('items.0.is_online',true)->assertJsonMissingPath('items.0.last_seen_at');
+  $member->forceFill(['last_seen_at'=>now()->subMinutes(3)])->save();
+  $this->getJson('/portal/admin/users?search='.urlencode($member->email))->assertOk()->assertJsonPath('items.0.is_online',false);
+ }
  public function test_admin_classification_requires_the_configured_secret_keeps_dummy_in_directory_and_preserves_referrals(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);$requestId=(string)Str::uuid();
   config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);

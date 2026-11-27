@@ -15,6 +15,16 @@ class PortalController extends Controller
         }
         return response()->json($this->payloadForUser($user));
     }
+    public function presence(Request $request): JsonResponse
+    {
+        $now = now();
+        DB::table('users')
+            ->where('id', $request->user()->id)
+            ->where(fn ($query) => $query->whereNull('last_seen_at')->orWhere('last_seen_at', '<=', $now->copy()->subSeconds(30)))
+            ->update(['last_seen_at' => $now]);
+
+        return response()->json(['ok' => true]);
+    }
     public function payloadForUser(User $user): array
     {
         app(InterestAccrualService::class)->accrue($user);
