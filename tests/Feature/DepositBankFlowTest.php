@@ -154,6 +154,30 @@ class DepositBankFlowTest extends TestCase
         ]);
     }
 
+    public function test_palawan_pay_is_an_available_payment_method_with_its_assets(): void
+    {
+        config(['portal.deposit_qr_demo_mode' => false]);
+        $member = $this->account();
+
+        $this->actingAs($member)->submitDeposit([
+            'type' => 'deposit',
+            'amount' => '5000',
+            'payment_method' => 'palawan_pay',
+            'request_id' => (string) Str::uuid(),
+        ])
+            ->assertOk()
+            ->assertJsonPath('submitted_request.payment_method', 'palawan_pay')
+            ->assertJsonPath('submitted_request.test_only', false);
+
+        $this->assertDatabaseHas('wallet_requests', [
+            'user_id' => $member->id,
+            'payment_method' => 'palawan_pay',
+            'test_only' => false,
+        ]);
+        $this->assertFileExists(public_path('assets/Palawan Pay.svg'));
+        $this->assertFileExists(public_path('assets/Palawan-Pay-Qr.svg'));
+    }
+
     public function test_demo_cleanup_migration_deletes_test_requests_and_preserves_audit_history(): void
     {
         $member = $this->account();

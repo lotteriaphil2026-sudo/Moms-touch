@@ -113,7 +113,7 @@ class PortalController extends Controller
             'amount' => ['required', 'string', 'max:17', 'regex:/^\d{1,14}(\.\d{1,2})?$/'],
             'deposit_plan' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(array_keys(config('portal.plans')))],
             'plan' => ['nullable', 'required_if:type,invest', Rule::in(array_keys(config('portal.plans')))],
-            'payment_method' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(['landbank', 'bpi', 'security_bank'])],
+            'payment_method' => ['nullable', 'required_if:type,deposit', 'prohibited_unless:type,deposit', Rule::in(['landbank', 'bpi', 'security_bank', 'palawan_pay'])],
             'withdrawal_account_id' => ['nullable', 'required_if:type,withdraw', 'prohibited_unless:type,withdraw', 'integer', 'min:1'],
             'request_id' => ['required', 'uuid'],
             'note' => ['nullable', 'string', 'max:500'],

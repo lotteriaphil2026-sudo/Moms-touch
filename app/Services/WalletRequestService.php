@@ -16,8 +16,8 @@ class WalletRequestService
     {
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
         abort_unless(in_array($type, ['deposit', 'withdraw'], true), 422, 'Invalid request type.');
-        if ($paymentMethod !== null && !in_array($paymentMethod, ['landbank', 'bpi', 'security_bank'], true)) {
-            throw ValidationException::withMessages(['payment_method' => 'Choose a supported bank.']);
+        if ($paymentMethod !== null && !in_array($paymentMethod, ['landbank', 'bpi', 'security_bank', 'palawan_pay'], true)) {
+            throw ValidationException::withMessages(['payment_method' => 'Choose a supported payment method.']);
         }
         $cents = PortalMoney::cents($amount, $type === 'deposit' ? null : 100000000);
         if ($type === 'deposit' && $cents < 500000) {
