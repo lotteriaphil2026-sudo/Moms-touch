@@ -554,3 +554,79 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 @media(prefers-reduced-motion:reduce){
   .field input,.field select,.field textarea,.search-field input,.btn{transition:none}
 }
+.deposit-receipt-field input[type="file"]{
+  display:block;
+  width:100%;
+  min-height:58px;
+  padding:8px 10px;
+  border:1px solid #e6d3ad;
+  border-radius:15px;
+  background:linear-gradient(135deg,#fffdfa,#fff8e9);
+  color:#514637;
+  font-size:14px;
+}
+.deposit-receipt-field input[type="file"]::file-selector-button,
+.deposit-receipt-field input[type="file"]::-webkit-file-upload-button{
+  margin-right:12px;
+  padding:10px 16px;
+  border:0;
+  border-radius:999px;
+  background:#f4ad19;
+  box-shadow:0 3px 8px rgba(48,43,36,.14);
+  color:#302b24;
+  cursor:pointer;
+  font:inherit;
+  font-weight:700;
+}
+.deposit-receipt-field input[type="file"]::file-selector-button:hover,
+.deposit-receipt-field input[type="file"]::-webkit-file-upload-button:hover{
+  background:#ffbd2e;
+}
+.deposit-receipt-field input[type="file"]:focus-visible{
+  border-color:#d6950c;
+  box-shadow:0 0 0 4px rgba(244,173,25,.2);
+  outline:none;
+}
+.modal.deposit-qr-modal{
+  width:min(520px,100%);
+  padding:22px;
+}
+.deposit-qr-modal .deposit-test-qr{
+  display:block;
+  width:min(100%,380px);
+  max-height:min(48dvh,430px);
+  height:auto;
+  margin:12px auto 16px;
+  border:1px solid #eee8dd;
+  border-radius:14px;
+  background:#fff;
+  object-fit:contain;
+}
+.deposit-qr-details{
+  padding:17px;
+  border:1px solid #eee2cc;
+  border-radius:17px;
+  background:linear-gradient(145deg,#fffdfa,#fff8eb);
+  box-shadow:0 5px 16px rgba(48,43,36,.07);
+}
+.deposit-qr-details .deposit-qr-amount{
+  margin:0 0 9px;
+  color:#8c7657;
+  font-size:14px;
+}
+.deposit-qr-details .deposit-qr-amount strong{
+  color:#302b24;
+  font-size:16px;
+}
+.deposit-qr-details .deposit-qr-instructions{
+  margin:0;
+  color:#81725c;
+  font-size:12px;
+  line-height:1.65;
+}
+.deposit-qr-details .field{
+  margin-top:16px;
+}
+.deposit-qr-details>.btn{
+  margin-top:16px;
+}
