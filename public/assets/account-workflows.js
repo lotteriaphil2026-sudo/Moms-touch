@@ -5,7 +5,15 @@ function statusBadge(status){return `<span class="workflow-status workflow-${esc
 function portalDate(date){return date?new Date(date).toLocaleString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'—';}
 function memberWalletRequests(){
  const rows=state.wallet_requests||[];
- return `<section class="panel member-requests"><div class="panel-head"><div><h2>Deposit & withdrawal requests</h2><p class="panel-sub">Track admin reviews and the notes for each request.</p></div><span class="neutral-tag">${rows.filter(r=>r.status==='pending').length} PENDING</span></div>${rows.length?`<div class="request-cards">${rows.map(r=>`<article class="member-request"><div><strong>${r.type==='deposit'?'Deposit':'Withdrawal'} · ${cash(r.amount)}</strong><small>${esc(r.reference)} · ${portalDate(r.created_at)}${r.payment_method?` · ${esc(window.PORTAL_BANK_LABELS?.[r.payment_method]||r.payment_method)}`:''}</small>${r.test_only?'<p class="demo-notice">TEST ONLY — this request cannot be approved or credited.</p>':''}${r.review_note?`<p>Review note: ${esc(r.review_note)}</p>`:''}${r.type==='withdraw'&&r.status==='pending'?'<p>This amount is reserved while the admin reviews your request.</p>':''}</div>${statusBadge(r.status)}</article>`).join('')}</div>`:'<p class="workflow-empty">Your requests will appear here after you submit a deposit or withdrawal.</p>'}</section>`;
+ const groups=[
+  {type:'deposit',title:'Deposit requests',empty:'Your deposit requests will appear here after you submit a deposit.'},
+  {type:'withdraw',title:'Withdrawal requests',empty:'Your withdrawal requests will appear here after you submit a withdrawal.'},
+ ];
+ return `<div class="member-request-groups">${groups.map(group=>{
+  const requests=rows.filter(request=>request.type===group.type);
+  const pendingCount=requests.filter(request=>request.status==='pending').length;
+  return `<details class="panel member-requests member-request-group"><summary class="panel-head member-request-summary"><div class="member-request-summary-copy"><h2>${group.title}</h2><p class="panel-sub">Track administrator reviews and request notes. ${pendingCount} pending.</p></div><span class="neutral-tag">${requests.length} ${requests.length===1?'REQUEST':'REQUESTS'}</span><span class="member-request-chevron" aria-hidden="true"></span></summary>${requests.length?`<div class="request-cards">${requests.map(r=>`<article class="member-request"><div><strong>${group.type==='deposit'?'Deposit':'Withdrawal'} · ${cash(r.amount)}</strong><small>${esc(r.reference)} · ${portalDate(r.created_at)}${r.payment_method?` · ${esc(window.PORTAL_BANK_LABELS?.[r.payment_method]||r.payment_method)}`:''}</small>${r.test_only?'<p class="demo-notice">TEST ONLY — this request cannot be approved or credited.</p>':''}${r.review_note?`<p>Review note: ${esc(r.review_note)}</p>`:''}${r.type==='withdraw'&&r.status==='pending'?'<p>This amount is reserved while the admin reviews your request.</p>':''}</div>${statusBadge(r.status)}</article>`).join('')}</div>`:`<p class="workflow-empty">${group.empty}</p>`}</details>`;
+ }).join('')}</div>`;
 }
 function authEntryOptions(){
  if(!native)return '<div class="production-setup-note" role="status"><strong>Your member space is getting ready.</strong><p>Sign-in and registration will open shortly. Please check back soon.</p></div>';
