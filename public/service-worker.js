@@ -6,7 +6,7 @@ self.addEventListener('push', event => {
     const notification = event.data.json();
     event.waitUntil(self.registration.showNotification(notification.title, {
         body: notification.body,
-        icon: '/unnamed.png',
+        icon: '/assets/home-screen-icon-512.png',
         data: { url: notification.url },
     }).then(async () => {
         if (typeof self.navigator.setAppBadge !== 'function') {
