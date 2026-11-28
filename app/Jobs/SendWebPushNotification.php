@@ -24,6 +24,7 @@ class SendWebPushNotification implements ShouldQueue
         public string $title = 'Mom’s Touch account update',
         public bool $onlyIfNoInvestment = false,
         public ?string $investmentReminderDay = null,
+        public ?string $koreaRaffleReminderDate = null,
     ) {}
 
     public function handle(WebPushNotificationService $notifications): void
@@ -34,7 +35,8 @@ class SendWebPushNotification implements ShouldQueue
             $this->url,
             $this->title,
             $this->onlyIfNoInvestment,
-            $this->investmentReminderDay
+            $this->investmentReminderDay,
+            $this->koreaRaffleReminderDate
         );
     }
 }

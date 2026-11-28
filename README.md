@@ -91,6 +91,8 @@ These are the operator-supplied configuration, not a promise of actual payment. 
 
 The scheduled command uses overlapping-run protection and stops when wallet operations are paused. All new accounts have no allocations and earn zero until a funded plan is created.
 
+The Korea raffle records one ticket per member per Philippine calendar day through January 27, 2027. Only subscribed, non-admin members with an active investment who have not claimed that day receive reminders, scheduled for 10:00 and 18:00 Philippine time. Reminder clicks open the raffle claim page. Run Laravel's scheduler every minute and a queue worker for push delivery; members must enable phone notifications in their account.
+
 ## Authentication, security, and email
 
 Laravel web sessions and CSRF protect mutations. Passwords are hashed; login rotates the session and returns a new CSRF token. Login, registration, reset requests, admin actions, and member mutations are throttled. Data access is scoped to the current user; admins have explicit server-enforced access. Dynamic responses use `private, no-store`, same-origin CSP with a script nonce, frame protection, and security headers; HTTPS production responses include HSTS. Only the configured application host is accepted outside local/testing environments.

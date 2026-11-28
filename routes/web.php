@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, GoogleAuthController, PortalController, PromotionController, PushSubscriptionController, WithdrawalAccountController};
+use App\Http\Controllers\{AdminController, AuthController, FranchiseApplicationController, GoogleAuthController, KoreaRaffleController, PortalController, PromotionController, PushSubscriptionController, WithdrawalAccountController};
 use App\Http\Middleware\EnsureAdministrator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -25,6 +25,7 @@ Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->
 
 Route::prefix('portal')->group(function () {
     Route::get('/state', [PortalController::class, 'state']);
+    Route::get('/promotions/korea-raffle', [KoreaRaffleController::class, 'status'])->middleware('throttle:60,1');
     Route::middleware('guest')->group(function () {
         Route::get('/google-onboarding', [GoogleAuthController::class, 'onboarding'])->middleware('throttle:10,1');
         Route::post('/google-register', [GoogleAuthController::class, 'register'])->middleware('throttle:5,1');
@@ -35,6 +36,7 @@ Route::prefix('portal')->group(function () {
     Route::middleware('auth')->group(function () {
         Route::post('/presence', [PortalController::class, 'presence'])->middleware('throttle:120,1');
         Route::post('/promotions/home-screen-bonus/claim', [PromotionController::class, 'claimHomeScreenBonus'])->middleware('throttle:3,1');
+        Route::post('/promotions/korea-raffle/claim', [KoreaRaffleController::class, 'claim'])->middleware('throttle:5,1');
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::patch('/profile', [PortalController::class, 'profile'])->middleware('throttle:20,1');
         Route::post('/notifications/read-all', [PortalController::class, 'markNotificationsRead'])->middleware('throttle:10,1');

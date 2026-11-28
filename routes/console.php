@@ -1,6 +1,6 @@
 <?php
 use App\Models\{MemberSignIn, User};
-use App\Services\{InterestAccrualService, InvestmentReminderService};
+use App\Services\{InterestAccrualService, InvestmentReminderService, KoreaRaffleService, WebPushNotificationService};
 use Illuminate\Support\Facades\{Artisan, Schedule};
 use Minishlink\WebPush\VAPID;
 
@@ -55,6 +55,50 @@ Artisan::command('portal:investment-reminders', function (InvestmentReminderServ
     $this->info("Checked {$checked} eligible member accounts.");
 })->purpose('Send the daily investment reminder to subscribed members without an investment');
 Schedule::command('portal:investment-reminders')->dailyAt('10:00')->timezone('Asia/Manila')->withoutOverlapping();
+
+Artisan::command('portal:korea-raffle-reminders', function (KoreaRaffleService $raffle, WebPushNotificationService $notifications) {
+    $today = now(KoreaRaffleService::TIMEZONE)->toDateString();
+    if ($raffle->phase($today) !== 'open') {
+        $this->info('Korea raffle ticket claims are closed. No reminders sent.');
+
+        return;
+    }
+
+    $queued = 0;
+    User::query()
+        ->where('is_admin', false)
+        ->where('is_dummy', false)
+        ->whereExists(fn ($query) => $query->selectRaw('1')
+            ->from('push_subscriptions')
+            ->whereColumn('push_subscriptions.user_id', 'users.id'))
+        ->whereExists(fn ($query) => $query->selectRaw('1')
+            ->from('investment_allocations')
+            ->whereColumn('investment_allocations.user_id', 'users.id')
+            ->where('investment_allocations.status', 'active'))
+        ->whereNotExists(fn ($query) => $query->selectRaw('1')
+            ->from('korea_raffle_tickets')
+            ->whereColumn('korea_raffle_tickets.user_id', 'users.id')
+            ->where('korea_raffle_tickets.claim_date', $today))
+        ->chunkById(100, function ($users) use ($notifications, $today, &$queued): void {
+            foreach ($users as $user) {
+                if ($notifications->notify(
+                    $user->id,
+                    'You have not claimed today’s Korea raffle ticket yet. Claim one today for another entry.',
+                    '/moms-touch-korea-raffle.html',
+                    'Your Korea raffle ticket is waiting',
+                    false,
+                    null,
+                    $today
+                )) {
+                    $queued++;
+                }
+            }
+        });
+
+    $this->info("Queued {$queued} Korea raffle reminders for {$today}.");
+})->purpose('Remind eligible members who have not claimed today’s Korea raffle ticket');
+Schedule::command('portal:korea-raffle-reminders')->dailyAt('10:00')->timezone(KoreaRaffleService::TIMEZONE)->withoutOverlapping();
+Schedule::command('portal:korea-raffle-reminders')->dailyAt('18:00')->timezone(KoreaRaffleService::TIMEZONE)->withoutOverlapping();
 
 Artisan::command('portal:prune-sign-ins', function () {
     $deleted = MemberSignIn::where('created_at', '<', now()->subDays(30))->delete();

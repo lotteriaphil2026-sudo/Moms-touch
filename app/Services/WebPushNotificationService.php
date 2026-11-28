@@ -18,13 +18,22 @@ class WebPushNotificationService
         string $title = 'Mom’s Touch account update',
         bool $onlyIfNoInvestment = false,
         ?string $investmentReminderDay = null,
+        ?string $koreaRaffleReminderDate = null,
     ): bool
     {
         if (! $this->isConfigured() || ! PushSubscription::where('user_id', $userId)->exists()) {
             return false;
         }
 
-        SendWebPushNotification::dispatch($userId, $message, $url, $title, $onlyIfNoInvestment, $investmentReminderDay)->afterCommit();
+        SendWebPushNotification::dispatch(
+            $userId,
+            $message,
+            $url,
+            $title,
+            $onlyIfNoInvestment,
+            $investmentReminderDay,
+            $koreaRaffleReminderDate
+        )->afterCommit();
 
         return true;
     }
@@ -57,8 +66,14 @@ class WebPushNotificationService
         string $title = 'Mom’s Touch account update',
         bool $onlyIfNoInvestment = false,
         ?string $investmentReminderDay = null,
+        ?string $koreaRaffleReminderDate = null,
     ): void
     {
+        if ($koreaRaffleReminderDate !== null
+            && ! app(KoreaRaffleService::class)->isEligibleForReminder($userId, $koreaRaffleReminderDate)) {
+            return;
+        }
+
         if ($onlyIfNoInvestment) {
             $member = User::find($userId);
             $today = now('Asia/Manila')->toDateString();

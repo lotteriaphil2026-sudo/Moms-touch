@@ -54,7 +54,7 @@ class AdminWorkflowTest extends TestCase
  }
  public function test_admin_can_upload_and_email_a_member_certificate(): void {
   Mail::fake();
-  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $member=$this->member();$otherMember=$this->member();$admin=$this->member(true);$this->actingAs($admin);
   $certificate=UploadedFile::fake()->create('investment-certificate.pdf',100,'application/pdf');
   $this->post('/portal/admin/users/'.$member->id.'/certificates',[
    'certificate'=>$certificate,
@@ -69,6 +69,8 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'certificate_issued']);
   Mail::assertSent(CertificateIssued::class,fn(CertificateIssued $mail)=>$mail->hasTo($member->email)&&$mail->certificate->certificate_number==='MT-0038419');
   $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
+  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
+  $this->actingAs($otherMember)->getJson('/portal/state')->assertOk()->assertJsonCount(0,'certificates');
  }
  public function test_admin_can_assign_a_google_drive_agreement_link_for_a_member(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);

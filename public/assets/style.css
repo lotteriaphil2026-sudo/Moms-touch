@@ -583,21 +583,95 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 .member-certificate-item small{color:var(--muted);overflow-wrap:anywhere}
 .member-certificate-actions{display:flex;gap:8px;flex-shrink:0}
 .member-certificate-actions .btn{font-size:11px;padding:8px 10px}
-.account-profile-heading{
+.account-profile-identity{
+  display:flex;
+  align-items:center;
+  gap:13px;
+  min-width:0;
+}
+.account-profile-identity .avatar{
+  display:grid;
+  flex:0 0 64px;
+  width:64px;
+  height:64px;
+  place-items:center;
+  font-size:18px;
+}
+.account-profile-identity-copy{
+  display:grid;
+  flex:1;
+  gap:4px;
+  min-width:0;
+}
+.account-profile-identity-copy strong{
+  font-size:15px;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.account-profile-identity-copy span{
+  color:var(--muted);
+  font-size:11px;
+  overflow-wrap:anywhere;
+}
+.account-sign-out{
+  flex-shrink:0;
+  gap:6px;
+  padding:9px 11px;
+  font-size:10px;
+  white-space:nowrap;
+}
+.account-sign-out svg{width:14px;height:14px}
+.account-personal-details{
+  margin-top:20px;
+  padding-top:16px;
+  border-top:1px solid var(--line);
+}
+.account-personal-details summary{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:12px;
-  margin-bottom:18px;
+  padding:13px 15px;
+  border:1px solid #eee7d9;
+  border-radius:12px;
+  background:#fffdf9;
+  color:#5d4c32;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:650;
+  list-style:none;
+  user-select:none;
 }
-.account-profile-heading h3{margin:0}
-.account-profile-heading .btn{flex-shrink:0}
+.account-personal-details summary::-webkit-details-marker{display:none}
+.account-personal-details summary::marker{content:''}
+.account-personal-details summary:focus-visible{
+  outline:3px solid rgba(224,150,35,.38);
+  outline-offset:3px;
+}
+.account-details-chevron{
+  flex:0 0 9px;
+  width:9px;
+  height:9px;
+  margin:0 4px 4px 0;
+  border-right:2px solid #aa946a;
+  border-bottom:2px solid #aa946a;
+  transform:rotate(45deg);
+  transition:transform .18s ease;
+}
+.account-personal-details[open] .account-details-chevron{
+  margin-bottom:0;
+  transform:rotate(225deg);
+}
+.account-personal-content{padding-top:16px}
+@media(prefers-reduced-motion:reduce){.account-details-chevron{transition:none}}
 .account-registration-details .detail-row{align-items:flex-start}
 .account-registration-details .detail-row strong{
   max-width:65%;
   overflow-wrap:anywhere;
   text-align:right;
 }
+.referral-edit-toggle{margin-top:4px}
+.referral-code-editor{margin-top:14px}
 .deposit-receipt-field input[type="file"]{
   display:block;
   width:100%;
