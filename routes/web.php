@@ -60,6 +60,7 @@ Route::prefix('portal')->group(function () {
             Route::post('/users/{user}/funds', [AdminController::class, 'funds']);
             Route::post('/users/{user}/plans', [AdminController::class, 'plans']);
             Route::post('/users/{user}/plans/{investment}/stop', [AdminController::class, 'stopPlan']);
+            Route::post('/users/{user}/plans/{investment}/upgrade', [AdminController::class, 'upgradePlan']);
             Route::get('/audit', [AdminController::class, 'audit']);
         });
     });

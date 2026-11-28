@@ -183,6 +183,42 @@ class AdminWorkflowTest extends TestCase
   $this->send($u,'plans',$input)->assertOk()->assertJsonPath('notification_queued',null);Queue::assertPushed(SendWebPushNotification::class,1);$this->assertDatabaseCount('investment_allocations',1);$inv=InvestmentAllocation::first();$this->assertSame(60,$inv->rate_basis_points);$this->assertSame('0.006000',$inv->daily_interest_rate);
   $this->travel(1)->days();$this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings',3000)->assertJsonPath('wallet.balance',103000)->assertJsonPath('transactions.0.type','interest')->assertJsonPath('transactions.1.type','plan_grant');$this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'plan_grant','amount_cents'=>500000]);$this->assertDatabaseCount('admin_actions',1);
  }
+ public function test_admin_can_upgrade_an_active_plan_to_a_higher_amount(): void {
+  $u=$this->member(false,'1000');$admin=$this->member(true);
+  $this->actingAs($admin);
+  $this->send($u,'plans',['amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid(),'note'=>'Initial plan'])->assertOk();
+  $old=InvestmentAllocation::where('user_id',$u->id)->firstOrFail();
+  $this->travel(1)->days();
+  $this->actingAs($u)->getJson('/portal/state')->assertOk()->assertJsonPath('wallet.earnings',3000);
+
+  $this->actingAs($admin)
+   ->postJson('/portal/admin/users/'.$u->id.'/plans/'.$old->id.'/upgrade',[
+    'amount'=>'7000',
+    'plan'=>'select',
+    'reason'=>'Member requested a higher principal',
+   ])
+   ->assertOk()
+   ->assertJsonPath('status','active');
+
+  $this->assertDatabaseHas('investment_allocations',['id'=>$old->id,'status'=>'stopped']);
+  $new=InvestmentAllocation::where('user_id',$u->id)->where('status','active')->firstOrFail();
+  $this->assertSame(700000,$new->amount_cents);
+  $this->assertSame('select',$new->plan);
+  $wallet=Wallet::where('user_id',$u->id)->firstOrFail();
+  $this->assertSame(700000,$wallet->invested_cents);
+  $this->assertSame(3000,$wallet->earnings_cents);
+  $this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'plan_grant','amount_cents'=>700000]);
+  $this->assertDatabaseHas('wallet_transactions',['user_id'=>$u->id,'type'=>'interest','amount_cents'=>3000]);
+  $this->assertDatabaseHas('admin_actions',['user_id'=>$u->id,'action'=>'plan_upgraded','amount_cents'=>700000]);
+
+  $this->postJson('/portal/admin/users/'.$u->id.'/plans/'.$old->id.'/upgrade',[
+   'amount'=>'8000','plan'=>'prime','reason'=>'Try again',
+ ])->assertUnprocessable();
+
+  $this->postJson('/portal/admin/users/'.$u->id.'/plans/'.$new->id.'/upgrade',[
+   'amount'=>'7000','plan'=>'prime','reason'=>'No increase',
+ ])->assertUnprocessable();
+ }
  public function test_admin_can_stop_an_active_plan_without_refunding_capital_or_erasing_history(): void {
   $u=$this->member(false,'1000');$admin=$this->member(true);
   $this->actingAs($admin);

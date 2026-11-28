@@ -1,6 +1,6 @@
 'use strict';
 function isPortalAdmin(){return native&&state.user?.is_admin===true;}
-function approvalStatus(status){return ({pending:'Pending review',approved:'Approved',rejected:'Rejected',active:'Active',completed:'Term completed'})[status]||status;}
+function approvalStatus(status){return ({pending:'Pending review',approved:'Approved',rejected:'Rejected',active:'Active',completed:'Term completed',stopped:'Stopped'})[status]||status;}
 function statusBadge(status){return `<span class="workflow-status workflow-${esc(status)}">${esc(approvalStatus(status))}</span>`;}
 function portalDate(date){return date?new Date(date).toLocaleString('en-PH',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}):'—';}
 function memberWalletRequests(){

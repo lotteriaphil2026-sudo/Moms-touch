@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 use App\Models\{AdminAction, InvestmentAllocation, MemberCertificate, MemberSignIn, User, Wallet, WalletRequest};
-use App\Services\{InterestAccrualService, WalletAdministrationService, WalletRequestService, WebPushNotificationService};
+use App\Services\{InterestAccrualService, PortalMoney, WalletAdministrationService, WalletRequestService, WebPushNotificationService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -173,7 +173,8 @@ class AdminController extends Controller
 
         app(InterestAccrualService::class)->accrue($user);
 
-        [$allocation, $changed] = DB::transaction(function () use ($request, $user, $investment, $input) {
+        $allocation = DB::transaction(function () use ($request, $user, $investment, $input) {
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $allocation = InvestmentAllocation::whereKey($investment->id)->lockForUpdate()->firstOrFail();
             if ($allocation->status !== 'active') {
                 throw \Illuminate\Validation\ValidationException::withMessages([
@@ -181,7 +182,6 @@ class AdminController extends Controller
                 ]);
             }
 
-            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
             $wallet->invested_cents = max(0, $wallet->invested_cents - $allocation->amount_cents);
             $wallet->save();
 
@@ -208,7 +208,7 @@ class AdminController extends Controller
                 ],
             ]);
 
-            return [$allocation, true];
+            return $allocation;
         }, 3);
 
         app(WebPushNotificationService::class)->notify(
@@ -223,6 +223,128 @@ class AdminController extends Controller
             'allocation_id' => $allocation->id,
             'status' => $allocation->status,
         ]);
+    }
+
+    public function upgradePlan(Request $request, User $user, InvestmentAllocation $investment): JsonResponse
+    {
+        abort_unless($request->user()->is_admin, 403, 'Administrator access is required.');
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot have member plans.');
+        abort_unless((int) $investment->user_id === (int) $user->id, 404, 'Plan not found for this member.');
+        abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
+
+        $input = $request->validate([
+            'amount' => ['required', 'string', 'max:17', 'regex:/\A\d{1,14}(?:\.\d{1,2})?\z/'],
+            'plan' => ['required', 'string', 'in:select,prime,signature'],
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        $details = config('portal.plans.'.$input['plan']);
+        abort_unless(is_array($details), 422, 'Choose a valid plan.');
+
+        $newCents = PortalMoney::cents($input['amount']);
+        if ($newCents < $details['minimum_cents']) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'amount' => 'Enter at least the selected plan’s minimum amount.',
+            ]);
+        }
+
+        app(InterestAccrualService::class)->accrue($user);
+
+        [$newAllocation, $newCents] = DB::transaction(function () use ($request, $user, $investment, $input, $details, $newCents) {
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            $oldAllocation = InvestmentAllocation::whereKey($investment->id)->lockForUpdate()->firstOrFail();
+            if ($oldAllocation->status !== 'active') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'allocation' => 'This plan is already stopped or completed.',
+                ]);
+            }
+            if ($newCents <= $oldAllocation->amount_cents) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'amount' => 'Upgrade amount must be higher than the current plan amount.',
+                ]);
+            }
+
+            $wallet->invested_cents = max(0, $wallet->invested_cents - $oldAllocation->amount_cents) + $newCents;
+            $wallet->save();
+
+            $now = now()->toImmutable();
+            $oldAllocation->forceFill([
+                'status' => 'stopped',
+                'stopped_at' => now(),
+                'stopped_by' => $request->user()->id,
+            ])->save();
+
+            $newAllocation = InvestmentAllocation::create([
+                'reference' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'plan' => $input['plan'],
+                'plan_name' => $details['name'],
+                'amount_cents' => $newCents,
+                'status' => 'active',
+                'rate_basis_points' => $details['daily_rate_bps'],
+                'daily_interest_rate' => sprintf('%d.%04d00', intdiv($details['daily_rate_bps'], 10000), $details['daily_rate_bps'] % 10000),
+                'term_days' => $details['term_days'],
+                'credited_days' => 0,
+                'started_at' => $now,
+                'matures_at' => $now->addDays($details['term_days']),
+            ]);
+
+            $requestId = (string) Str::uuid();
+            $fingerprint = hash('sha256', 'plan-upgrade|'.$oldAllocation->id.'|'.$newAllocation->id.'|'.$newCents);
+            WalletTransaction::create([
+                'reference' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'request_id' => $requestId,
+                'request_fingerprint' => $fingerprint,
+                'type' => 'plan_grant',
+                'description' => $details['name'].' upgraded allocation',
+                'amount_cents' => $newCents,
+                'balance_after_cents' => $wallet->balance_cents,
+                'status' => 'completed',
+            ]);
+
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $user->id,
+                'request_id' => $requestId,
+                'request_fingerprint' => $fingerprint,
+                'action' => 'plan_upgraded',
+                'amount_cents' => $newCents,
+                'note' => trim($input['reason']),
+                'metadata' => [
+                    'old_allocation_id' => $oldAllocation->id,
+                    'old_allocation_reference' => $oldAllocation->reference,
+                    'old_plan_name' => $oldAllocation->plan_name,
+                    'old_amount_cents' => $oldAllocation->amount_cents,
+                    'new_allocation_id' => $newAllocation->id,
+                    'new_allocation_reference' => $newAllocation->reference,
+                    'plan' => $input['plan'],
+                    'plan_name' => $details['name'],
+                ],
+            ]);
+
+            return [$newAllocation, $newCents];
+        }, 3);
+
+        app(WebPushNotificationService::class)->notify(
+            $user->id,
+            'Your plan was upgraded to '.$newAllocation->plan_name.' with a new amount of '.$this->phpMoney($newCents).'.',
+            '/#/investments',
+            'Investment plan upgraded'
+        );
+
+        return response()->json([
+            'message' => 'Plan upgraded successfully.',
+            'old_allocation_id' => $investment->id,
+            'new_allocation_id' => $newAllocation->id,
+            'status' => $newAllocation->status,
+        ]);
+    }
+
+    private function phpMoney(int $cents): string
+    {
+        return '₱'.number_format($cents / 100, 2, '.', ',');
     }
 
     public function sendCertificate(Request $request, User $user): JsonResponse
