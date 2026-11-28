@@ -59,6 +59,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_dummy' => 'boolean',
+            'referral_code_changed' => 'boolean',
         ];
     }
 

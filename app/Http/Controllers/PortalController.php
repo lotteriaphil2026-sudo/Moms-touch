@@ -54,6 +54,7 @@ class PortalController extends Controller
                 'referral_preview_type' => $user->referral_preview_type,
                 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
+                'referral_code_changed' => (bool) $user->referral_code_changed,
                 'referrer' => $referrerData,
                 'home_screen_bonus_claimed' => app(HomeScreenBonusService::class)->hasClaimed($user),
             ],
@@ -194,7 +195,11 @@ class PortalController extends Controller
         ]);
         $updates = ['name' => trim($input['name'])];
         if (!empty($input['referral_code'])) {
-            $updates['referral_code'] = strtoupper(trim($input['referral_code']));
+            $updatedReferralCode = strtoupper(trim($input['referral_code']));
+            $updates['referral_code'] = $updatedReferralCode;
+            if ($updatedReferralCode !== $request->user()->referral_code) {
+                $updates['referral_code_changed'] = true;
+            }
         }
         $request->user()->forceFill($updates);
         $request->user()->save();

@@ -187,7 +187,7 @@ class AdminWorkflowTest extends TestCase
   $this->getJson('/portal/admin/users?search='.urlencode($member->email))->assertOk()->assertJsonPath('items.0.is_online',false);
  }
  public function test_admin_classification_requires_the_configured_secret_keeps_dummy_in_directory_and_preserves_referrals(): void {
-  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);$requestId=(string)Str::uuid();
+  $member=$this->member();$member->forceFill(['date_of_birth'=>'1995-03-08','marital_status'=>'Married'])->save();$admin=$this->member(true);$this->actingAs($admin);$requestId=(string)Str::uuid();
   config(['portal.admin_member_classification_key'=>str_repeat('s',48)]);
   $this->postJson('/portal/admin/users/'.$member->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('w',48),'request_id'=>$requestId])->assertForbidden();
   $this->assertFalse($member->fresh()->is_dummy);$this->assertDatabaseCount('admin_actions',0);
@@ -200,7 +200,7 @@ class AdminWorkflowTest extends TestCase
   $directory=$directoryResponse->json('items');
   $this->assertContains($member->id,array_column($directory,'id'));
   $this->assertTrue(collect($directory)->firstWhere('id',$member->id)['is_dummy']);
-  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.is_dummy',true);
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.is_dummy',true)->assertJsonPath('user.date_of_birth','1995-03-08')->assertJsonPath('user.marital_status','Married')->assertJsonStructure(['sign_in_history']);
   $this->actingAs($member)->getJson('/portal/state')->assertOk()->assertJsonMissingPath('user.is_dummy')->assertJsonPath('user.referral_code',$member->referral_code);
   $this->postJson('/portal/logout')->assertOk();
   $this->postJson('/portal/register',['name'=>'Referred Member','email'=>'referred@example.test','phone'=>'+639171234567','date_of_birth'=>'1990-01-01','address'=>'123 Example Street, Makati City','gender'=>'Other','marital_status'=>'Single','password'=>'Example-password12!','password_confirmation'=>'Example-password12!','referral_code'=>$member->referral_code])

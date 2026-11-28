@@ -90,6 +90,7 @@ class ReferralSystemTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $member->id,
             'referral_code' => 'MY-CUSTOM-CODE',
+            'referral_code_changed' => true,
         ]);
     }
 
