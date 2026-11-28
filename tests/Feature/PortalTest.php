@@ -1,6 +1,6 @@
 <?php
 namespace Tests\Feature;
-use App\Models\{InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
+use App\Models\{InvestmentAllocation, MemberCertificate, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\{Hash, Notification, Storage};
@@ -73,7 +73,54 @@ class PortalTest extends TestCase
             ->assertSee('property="og:image"', false)
             ->assertSee('/assets/social-preview.jpg', false)
             ->assertSee('name="twitter:card"', false);
-        $this->getJson('/portal/state')->assertOk()->assertJsonPath('user', null)->assertJsonPath('wallet.balance', 0);
+        $this->getJson('/portal/state')->assertOk()->assertJsonPath('user', null)->assertJsonPath('wallet.balance', 0)->assertJsonCount(0, 'certificates');
+    }
+    public function test_member_state_lists_only_their_certificates_with_view_and_download_links(): void
+    {
+        $member = $this->member();
+        $otherMember = $this->member();
+        $admin = User::factory()->create(['is_admin' => true]);
+        $certificatePath = 'member-certificates/'.$member->id.'/certificate.pdf';
+        $otherCertificatePath = 'member-certificates/'.$otherMember->id.'/certificate.pdf';
+        Storage::disk('local')->put($certificatePath, 'member certificate');
+        Storage::disk('local')->put($otherCertificatePath, 'another member certificate');
+        $certificate = MemberCertificate::create([
+            'user_id' => $member->id,
+            'sent_by' => $admin->id,
+            'reference' => 'MT-CERT-'.Str::upper(Str::random(10)),
+            'certificate_number' => 'MT-0038419',
+            'holder_name' => $member->name,
+            'plan_name' => 'Mom’s Select',
+            'indicated_date' => '2026-11-28',
+            'sender_name' => 'Francis',
+            'attachment_path' => $certificatePath,
+            'original_name' => 'certificate.pdf',
+            'mime_type' => 'application/pdf',
+            'sent_at' => now(),
+        ]);
+        MemberCertificate::create([
+            'user_id' => $otherMember->id,
+            'sent_by' => $admin->id,
+            'reference' => 'MT-CERT-'.Str::upper(Str::random(10)),
+            'certificate_number' => 'MT-OTHER',
+            'holder_name' => $otherMember->name,
+            'plan_name' => 'Mom’s Select',
+            'indicated_date' => '2026-11-28',
+            'sender_name' => 'Francis',
+            'attachment_path' => $otherCertificatePath,
+            'original_name' => 'other-certificate.pdf',
+            'mime_type' => 'application/pdf',
+            'sent_at' => now(),
+        ]);
+
+        $state = $this->actingAs($member)->getJson('/portal/state')
+            ->assertOk()
+            ->assertJsonCount(1, 'certificates')
+            ->assertJsonPath('certificates.0.certificate_number', 'MT-0038419')
+            ->json('certificates.0');
+
+        $this->get($state['view_url'])->assertOk()->assertHeader('content-disposition', 'inline; filename=certificate.pdf');
+        $this->get($state['download_url'])->assertOk()->assertHeader('content-disposition', 'attachment; filename=certificate.pdf');
     }
     public function test_referral_links_include_social_preview_metadata(): void
     {

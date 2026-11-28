@@ -160,6 +160,56 @@ class AdminController extends Controller
             'admin_label' => $label,
         ]);
     }
+    public function saveContractAgreement(Request $request, User $user): JsonResponse
+    {
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member agreements.');
+        $input = $request->validate([
+            'contract_agreement_url' => [
+                'required', 'url', 'max:2048',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $parts = parse_url((string) $value) ?: [];
+                    $host = strtolower((string) ($parts['host'] ?? ''));
+                    if (($parts['scheme'] ?? '') !== 'https'
+                        || ! in_array($host, ['drive.google.com', 'docs.google.com'], true)
+                        || trim((string) ($parts['path'] ?? ''), '/') === ''
+                        || isset($parts['user'])
+                        || isset($parts['pass'])
+                        || (isset($parts['port']) && $parts['port'] !== 443)) {
+                        $fail('Use an HTTPS Google Drive or Google Docs link.');
+                    }
+                },
+            ],
+        ]);
+        $agreementUrl = trim($input['contract_agreement_url']);
+        $host = strtolower((string) parse_url($agreementUrl, PHP_URL_HOST));
+        $changed = DB::transaction(function () use ($request, $user, $agreementUrl, $host): bool {
+            $member = User::query()->lockForUpdate()->findOrFail($user->id);
+            abort_unless(! $member->is_admin, 422, 'Administrator accounts cannot receive member agreements.');
+            if ($member->contract_agreement_url === $agreementUrl) {
+                return false;
+            }
+
+            $member->forceFill(['contract_agreement_url' => $agreementUrl])->save();
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $member->id,
+                'request_id' => (string) Str::uuid(),
+                'request_fingerprint' => hash('sha256', 'member-agreement-link|'.$member->id.'|'.$agreementUrl),
+                'action' => 'member_agreement_link_updated',
+                'amount_cents' => 0,
+                'note' => 'Updated the member contract agreement link.',
+                'metadata' => ['host' => $host],
+            ]);
+
+            return true;
+        });
+
+        return response()->json([
+            'message' => $changed ? 'Contract agreement link saved.' : 'Contract agreement link is unchanged.',
+            'contract_agreement_url' => $agreementUrl,
+        ]);
+    }
     public function stopPlan(Request $request, User $user, InvestmentAllocation $investment): JsonResponse
     {
         abort_unless($request->user()->is_admin, 403, 'Administrator access is required.');
@@ -429,14 +479,15 @@ class AdminController extends Controller
         ]);
     }
 
-    public function viewCertificate(MemberCertificate $certificate)
+    public function viewCertificate(MemberCertificate $certificate, Request $request)
     {
         abort_unless(Storage::disk('local')->exists($certificate->attachment_path), 404);
 
         return Storage::disk('local')->response(
             $certificate->attachment_path,
             $certificate->original_name,
-            ['Content-Disposition' => 'inline; filename="'.$certificate->original_name.'"'],
+            [],
+            $request->boolean('download') ? 'attachment' : 'inline',
         );
     }
     public function user(User $user, PortalController $portal): JsonResponse

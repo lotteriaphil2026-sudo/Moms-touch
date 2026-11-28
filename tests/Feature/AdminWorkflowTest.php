@@ -30,8 +30,11 @@ class AdminWorkflowTest extends TestCase
   $this->postJson('/portal/admin/users/'.$u->id.'/classification',['classification'=>'dummy','secret_key'=>str_repeat('x',32),'request_id'=>(string)Str::uuid()])->assertUnauthorized();
   $this->postJson('/portal/admin/users/'.$u->id.'/referral-preview',['preview_type'=>'special'])->assertUnauthorized();
   $this->postJson('/portal/admin/users/'.$u->id.'/label',['label'=>'VIP'])->assertUnauthorized();
+  $agreementUrl='https://drive.google.com/file/d/example/view';
+  $this->postJson('/portal/admin/users/'.$u->id.'/contract-agreement',['contract_agreement_url'=>$agreementUrl])->assertUnauthorized();
   $this->actingAs($u);foreach($urls as $url)$this->getJson($url)->assertForbidden();$this->getJson('/portal/admin/users/999999')->assertForbidden();$this->review($r)->assertForbidden();
   $this->postJson('/portal/admin/users/'.$u->id.'/label',['label'=>'VIP'])->assertForbidden();
+  $this->postJson('/portal/admin/users/'.$u->id.'/contract-agreement',['contract_agreement_url'=>$agreementUrl])->assertForbidden();
   $this->send($u,'funds',['is_admin'=>true])->assertForbidden();$this->send($u,'plans',['plan'=>'select','is_admin'=>true])->assertForbidden();$this->assertDatabaseCount('admin_actions',0);
  }
  public function test_admin_assigns_one_referral_preview_type_per_member(): void {
@@ -66,6 +69,30 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'certificate_issued']);
   Mail::assertSent(CertificateIssued::class,fn(CertificateIssued $mail)=>$mail->hasTo($member->email)&&$mail->certificate->certificate_number==='MT-0038419');
   $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
+ }
+ public function test_admin_can_assign_a_google_drive_agreement_link_for_a_member(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $agreementUrl='https://drive.google.com/file/d/example/view?usp=sharing';
+  $endpoint='/portal/admin/users/'.$member->id.'/contract-agreement';
+  $this->postJson($endpoint,['contract_agreement_url'=>$agreementUrl])
+   ->assertOk()->assertJsonPath('contract_agreement_url',$agreementUrl)->assertJsonPath('message','Contract agreement link saved.');
+  $this->assertDatabaseHas('users',['id'=>$member->id,'contract_agreement_url'=>$agreementUrl]);
+  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'member_agreement_link_updated']);
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('user.contract_agreement_url',$agreementUrl);
+  $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.contract_agreement_url',$agreementUrl);
+  $this->actingAs($admin)->postJson($endpoint,['contract_agreement_url'=>$agreementUrl])
+   ->assertOk()->assertJsonPath('message','Contract agreement link is unchanged.');
+  $this->assertDatabaseCount('admin_actions',1);
+ }
+ public function test_contract_agreement_links_must_be_https_google_drive_or_google_docs_urls(): void {
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $endpoint='/portal/admin/users/'.$member->id.'/contract-agreement';
+  foreach(['http://drive.google.com/file/d/example','https://drive.google.com.example.com/file/d/example','https://example.com/agreement','https://drive.google.com'] as $url){
+   $this->postJson($endpoint,['contract_agreement_url'=>$url])
+    ->assertUnprocessable()->assertJsonValidationErrors('contract_agreement_url');
+  }
+  $this->postJson($endpoint,['contract_agreement_url'=>'https://docs.google.com/document/d/example/edit'])
+   ->assertOk()->assertJsonPath('contract_agreement_url','https://docs.google.com/document/d/example/edit');
  }
  public function test_admin_can_set_and_clear_a_member_label(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);

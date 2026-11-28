@@ -1,9 +1,9 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{FranchiseApplication, InvestmentAllocation, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
+use App\Models\{FranchiseApplication, InvestmentAllocation, MemberCertificate, User, Wallet, WalletRequest, WalletTransaction, WithdrawalAccount};
 use App\Services\{HomeScreenBonusService, InterestAccrualService, PortalMoney, WalletRequestService, WalletService, WebPushNotificationService};
 use Illuminate\Http\{JsonResponse, Request};
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\{DB, URL};
 use Illuminate\Validation\Rule;
 class PortalController extends Controller
 {
@@ -11,7 +11,7 @@ class PortalController extends Controller
     {
         $user = $request->user();
         if (!$user) {
-            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'referral_earnings' => 0, 'daily_earnings' => 0, 'unread_notifications' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'withdrawal_accounts' => [], 'franchise_applications' => []]);
+            return response()->json(['csrf' => csrf_token(), 'user' => null, 'wallet' => ['balance' => 0, 'held' => 0, 'invested' => 0, 'earnings' => 0, 'referral_earnings' => 0, 'daily_earnings' => 0, 'unread_notifications' => 0], 'investments' => [], 'transactions' => [], 'wallet_requests' => [], 'withdrawal_accounts' => [], 'franchise_applications' => [], 'certificates' => []]);
         }
         return response()->json($this->payloadForUser($user));
     }
@@ -51,6 +51,7 @@ class PortalController extends Controller
                 'date_of_birth' => $user->date_of_birth?->format('Y-m-d'), 'address' => $user->address,
                 'gender' => $user->gender, 'marital_status' => $user->marital_status,
                 'is_admin' => $user->is_admin, 'is_dummy' => $user->is_dummy,
+                'contract_agreement_url' => $user->contract_agreement_url,
                 'referral_preview_type' => $user->referral_preview_type,
                 'created_at' => $user->created_at->toIso8601String(),
                 'referral_code' => $user->referral_code, 'referrals_count' => $user->referrals()->count(),
@@ -69,6 +70,14 @@ class PortalController extends Controller
             ],
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
             'withdrawal_accounts' => WithdrawalAccount::where('user_id', $user->id)->latest('id')->get()->map(fn ($account) => $account->publicData()),
+            'certificates' => MemberCertificate::where('user_id', $user->id)->latest('sent_at')->get()->map(fn (MemberCertificate $certificate) => [
+                'certificate_number' => $certificate->certificate_number,
+                'holder_name' => $certificate->holder_name,
+                'plan_name' => $certificate->plan_name,
+                'indicated_date' => $certificate->indicated_date?->format('Y-m-d'),
+                'view_url' => URL::temporarySignedRoute('certificates.view', now()->addDays(30), ['certificate' => $certificate->id]),
+                'download_url' => URL::temporarySignedRoute('certificates.view', now()->addDays(30), ['certificate' => $certificate->id, 'download' => 1]),
+            ]),
             'investments' => InvestmentAllocation::where('user_id', $user->id)->latest('id')->get()->map(fn ($i) => [
                 'allocation_id' => $i->id, 'id' => 'MT-'.strtoupper(substr($i->reference, 0, 8)), 'plan' => $i->plan,
                 'name' => $i->plan_name ?? ucfirst($i->plan).' (legacy)', 'amount' => $i->amount_cents,

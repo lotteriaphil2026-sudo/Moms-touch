@@ -52,6 +52,7 @@ Route::prefix('portal')->group(function () {
             Route::post('/users/{user}/referral-preview', [AdminController::class, 'assignReferralPreview']);
             Route::post('/users/{user}/label', [AdminController::class, 'updateMemberLabel']);
             Route::post('/users/{user}/certificates', [AdminController::class, 'sendCertificate']);
+            Route::post('/users/{user}/contract-agreement', [AdminController::class, 'saveContractAgreement']);
             Route::get('/deposit-users', [AdminController::class, 'depositUsers']);
             Route::get('/receipt-logs', [AdminController::class, 'receiptLogs']);
             Route::get('/requests', [AdminController::class, 'requests']);

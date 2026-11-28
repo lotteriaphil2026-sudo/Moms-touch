@@ -236,6 +236,29 @@
 .admin-content .admin-member-label>span{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:8px 18px;border:1px solid #eadbb8;border-radius:11px;background:#fff9e9;box-shadow:0 2px 6px rgba(48,43,36,.05),0 8px 18px rgba(48,43,36,.08);color:#785d30;font-size:12px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
 .admin-referral-panel .detail-row strong{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .admin-member-status-labels{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 auto;flex-wrap:wrap}
+.admin-content .admin-member-operations.has-documents{
+ display:grid;
+ grid-template-columns:minmax(0,2.2fr) minmax(128px,1fr);
+ align-items:stretch;
+ gap:12px;
+}
+.admin-member-documents{display:grid;grid-template-columns:1fr;gap:12px;align-content:start;min-width:0}
+.admin-member-documents .btn{
+ width:100%;
+ min-height:46px;
+ padding:10px 8px;
+ justify-content:center;
+ font-size:11px;
+ line-height:1.35;
+ white-space:normal;
+}
+@media(max-width:850px){
+ .admin-content .admin-member-operations.has-documents{display:flex;flex-direction:column}
+ .admin-member-documents{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:380px){
+ .admin-member-documents{grid-template-columns:1fr}
+}
 .admin-member-status-labels .admin-referral-changed{display:inline-flex;padding:4px 8px;border:1px solid #d7e9dc;border-radius:999px;background:#edf6ef;color:#28734b;font-size:9px;line-height:1.2;white-space:nowrap}
 .admin-member-status-labels .admin-home-screen-added{display:inline-flex;padding:4px 8px;border:1px solid #eadbb8;border-radius:999px;background:#fff9e9;color:#785d30;font-size:9px;line-height:1.2;white-space:nowrap}
 @media(max-width:700px){

@@ -554,6 +554,50 @@ body.splash-login-entering .auth-form-wrap{animation:splash-login-form-in 300ms 
 @media(prefers-reduced-motion:reduce){
   .field input,.field select,.field textarea,.search-field input,.btn{transition:none}
 }
+.account-profile-column{min-width:0}
+.account-document-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.account-document-actions .btn{
+  width:100%;
+  min-height:46px;
+  justify-content:center;
+  padding:10px 8px;
+  font-size:11px;
+  line-height:1.35;
+}
+.member-certificate-list{display:grid;gap:12px}
+.member-certificate-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:12px;
+}
+.member-certificate-item>div:first-child{display:grid;gap:4px;min-width:0}
+.member-certificate-item small{color:var(--muted);overflow-wrap:anywhere}
+.member-certificate-actions{display:flex;gap:8px;flex-shrink:0}
+.member-certificate-actions .btn{font-size:11px;padding:8px 10px}
+.account-profile-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:18px;
+}
+.account-profile-heading h3{margin:0}
+.account-profile-heading .btn{flex-shrink:0}
+.account-registration-details .detail-row{align-items:flex-start}
+.account-registration-details .detail-row strong{
+  max-width:65%;
+  overflow-wrap:anywhere;
+  text-align:right;
+}
 .deposit-receipt-field input[type="file"]{
   display:block;
   width:100%;
