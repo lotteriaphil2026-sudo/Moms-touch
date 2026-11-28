@@ -2,7 +2,8 @@
 namespace Tests\Feature;
 use App\Jobs\SendWebPushNotification;
 use App\Mail\WithdrawalApproved;
-use App\Models\{InvestmentAllocation, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
+use App\Mail\CertificateIssued;
+use App\Models\{InvestmentAllocation, MemberCertificate, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -47,6 +48,24 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseHas('users',['id'=>$member->id,'referral_code'=>$referralCode,'referral_preview_type'=>'standard']);
   $this->assertDatabaseCount('admin_actions',2);
   $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.referral_preview_type','standard');
+ }
+ public function test_admin_can_upload_and_email_a_member_certificate(): void {
+  Mail::fake();
+  $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);
+  $certificate=UploadedFile::fake()->create('investment-certificate.pdf',100,'application/pdf');
+  $this->post('/portal/admin/users/'.$member->id.'/certificates',[
+   'certificate'=>$certificate,
+   'holder_name'=>'Benedict Valeroso',
+   'certificate_number'=>'MT-0038419',
+   'plan_name'=>"Mom's Select",
+   'indicated_date'=>'2026-11-28',
+   'sender_name'=>'Francis',
+  ],['Accept'=>'application/json'])->assertOk()->assertJsonPath('certificate.certificate_number','MT-0038419');
+  $record=MemberCertificate::firstOrFail();
+  $this->assertSame($member->id,$record->user_id);
+  $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'certificate_issued']);
+  Mail::assertSent(CertificateIssued::class,fn(CertificateIssued $mail)=>$mail->hasTo($member->email)&&$mail->certificate->certificate_number==='MT-0038419');
+  $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
  }
  public function test_admin_can_set_and_clear_a_member_label(): void {
   $member=$this->member();$admin=$this->member(true);$this->actingAs($admin);

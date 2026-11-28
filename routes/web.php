@@ -14,6 +14,9 @@ Route::get('/register', function (\Illuminate\Http\Request $request) {
     }
     return redirect($destination);
 })->name('register');
+Route::get('/certificates/{certificate}/view', [AdminController::class, 'viewCertificate'])
+    ->middleware('signed')
+    ->name('certificates.view');
 Route::get('/forgot-password', fn () => redirect('/#/forgot'))->name('password.request');
 Route::get('/reset-password/{token}', fn (string $token) => view('reset-password', ['token' => $token]))->middleware('guest')->name('password.reset');
 Route::post('/reset-password', [AuthController::class, 'reset'])->middleware(['guest', 'throttle:6,1'])->name('password.update');
@@ -48,6 +51,7 @@ Route::prefix('portal')->group(function () {
             Route::post('/users/{user}/classification', [AdminController::class, 'classifyUser']);
             Route::post('/users/{user}/referral-preview', [AdminController::class, 'assignReferralPreview']);
             Route::post('/users/{user}/label', [AdminController::class, 'updateMemberLabel']);
+            Route::post('/users/{user}/certificates', [AdminController::class, 'sendCertificate']);
             Route::get('/deposit-users', [AdminController::class, 'depositUsers']);
             Route::get('/receipt-logs', [AdminController::class, 'receiptLogs']);
             Route::get('/requests', [AdminController::class, 'requests']);

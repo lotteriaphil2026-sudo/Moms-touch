@@ -1,11 +1,13 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{AdminAction, MemberSignIn, User, Wallet, WalletRequest};
+use App\Models\{AdminAction, MemberCertificate, MemberSignIn, User, Wallet, WalletRequest};
 use App\Services\{WalletAdministrationService, WalletRequestService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -158,6 +160,98 @@ class AdminController extends Controller
             'admin_label' => $label,
         ]);
     }
+    public function sendCertificate(Request $request, User $user): JsonResponse
+    {
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member certificates.');
+
+        $input = $request->validate([
+            'certificate' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:10240'],
+            'holder_name' => ['required', 'string', 'max:120'],
+            'certificate_number' => ['required', 'string', 'max:80'],
+            'plan_name' => ['required', 'string', 'max:120'],
+            'indicated_date' => ['required', 'date_format:Y-m-d'],
+            'sender_name' => ['required', 'string', 'max:80'],
+        ]);
+
+        $storedPath = $request->file('certificate')->store('member-certificates/'.$user->id, 'local');
+        if (! is_string($storedPath) || $storedPath === '') {
+            throw new \RuntimeException('The certificate file could not be saved.');
+        }
+
+        $certificate = MemberCertificate::create([
+            'user_id' => $user->id,
+            'sent_by' => $request->user()->id,
+            'reference' => 'MT-CERT-'.Str::upper(Str::random(10)),
+            'certificate_number' => trim($input['certificate_number']),
+            'holder_name' => trim($input['holder_name']),
+            'plan_name' => trim($input['plan_name']),
+            'indicated_date' => $input['indicated_date'],
+            'sender_name' => trim($input['sender_name']),
+            'attachment_path' => $storedPath,
+            'original_name' => $request->file('certificate')->getClientOriginalName(),
+            'mime_type' => $request->file('certificate')->getMimeType() ?: 'application/octet-stream',
+            'sent_at' => now(),
+        ]);
+
+        $certificateUrl = URL::temporarySignedRoute(
+            'certificates.view',
+            now()->addDays(30),
+            ['certificate' => $certificate->id],
+        );
+
+        try {
+            Mail::to($user->email)->send(new \App\Mail\CertificateIssued($certificate, $user, $certificateUrl));
+        } catch (\Throwable $mailError) {
+            report($mailError);
+            $certificate->delete();
+            Storage::disk('local')->delete($storedPath);
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(
+                response()->json(['message' => 'The certificate could not be delivered to '.$user->email.'.'], 502)
+            );
+        }
+
+        AdminAction::create([
+            'reference' => (string) Str::uuid(),
+            'actor_id' => $request->user()->id,
+            'user_id' => $user->id,
+            'request_id' => (string) Str::uuid(),
+            'request_fingerprint' => hash('sha256', 'certificate-issued|'.$certificate->id),
+            'action' => 'certificate_issued',
+            'amount_cents' => 0,
+            'note' => 'Sent certificate '.$certificate->certificate_number.'.',
+            'metadata' => [
+                'certificate_id' => $certificate->id,
+                'certificate_number' => $certificate->certificate_number,
+                'plan_name' => $certificate->plan_name,
+            ],
+        ]);
+
+        return response()->json([
+            'message' => 'Certificate sent to '.$user->email.'.',
+            'certificate' => [
+                'id' => $certificate->id,
+                'reference' => $certificate->reference,
+                'certificate_number' => $certificate->certificate_number,
+                'holder_name' => $certificate->holder_name,
+                'plan_name' => $certificate->plan_name,
+                'indicated_date' => $certificate->indicated_date->format('Y-m-d'),
+                'sender_name' => $certificate->sender_name,
+                'original_name' => $certificate->original_name,
+                'sent_at' => $certificate->sent_at->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function viewCertificate(MemberCertificate $certificate)
+    {
+        abort_unless(Storage::disk('local')->exists($certificate->attachment_path), 404);
+
+        return Storage::disk('local')->response(
+            $certificate->attachment_path,
+            $certificate->original_name,
+            ['Content-Disposition' => 'inline; filename="'.$certificate->original_name.'"'],
+        );
+    }
     public function user(User $user, PortalController $portal): JsonResponse
     {
         $payload = $portal->payloadForUser($user);
@@ -171,6 +265,20 @@ class AdminController extends Controller
 
         return response()->json([
             ...$payload,
+            'certificates' => MemberCertificate::where('user_id', $user->id)
+                ->latest('sent_at')
+                ->get()
+                ->map(fn (MemberCertificate $certificate) => [
+                    'id' => $certificate->id,
+                    'reference' => $certificate->reference,
+                    'certificate_number' => $certificate->certificate_number,
+                    'holder_name' => $certificate->holder_name,
+                    'plan_name' => $certificate->plan_name,
+                    'indicated_date' => $certificate->indicated_date?->format('Y-m-d'),
+                    'sender_name' => $certificate->sender_name,
+                    'original_name' => $certificate->original_name,
+                    'sent_at' => $certificate->sent_at?->toIso8601String(),
+                ]),
             'sign_in_history' => MemberSignIn::where('user_id', $user->id)
                 ->latest('created_at')
                 ->limit(20)
