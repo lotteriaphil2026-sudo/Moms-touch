@@ -70,7 +70,7 @@ class PortalController extends Controller
             'wallet_requests' => WalletRequest::where('user_id', $user->id)->latest('id')->get()->map(fn ($r) => $r->publicData()),
             'withdrawal_accounts' => WithdrawalAccount::where('user_id', $user->id)->latest('id')->get()->map(fn ($account) => $account->publicData()),
             'investments' => InvestmentAllocation::where('user_id', $user->id)->latest('id')->get()->map(fn ($i) => [
-                'id' => 'MT-'.strtoupper(substr($i->reference, 0, 8)), 'plan' => $i->plan,
+                'allocation_id' => $i->id, 'id' => 'MT-'.strtoupper(substr($i->reference, 0, 8)), 'plan' => $i->plan,
                 'name' => $i->plan_name ?? ucfirst($i->plan).' (legacy)', 'amount' => $i->amount_cents,
                 'rate_bps' => $i->rate_basis_points, 'term_days' => $i->term_days, 'credited_days' => $i->credited_days,
                 'started_at' => $i->started_at?->toIso8601String(), 'matures_at' => $i->matures_at?->toIso8601String(),

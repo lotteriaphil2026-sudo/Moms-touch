@@ -59,6 +59,7 @@ Route::prefix('portal')->group(function () {
             Route::post('/requests/{walletRequest}/review', [AdminController::class, 'review']);
             Route::post('/users/{user}/funds', [AdminController::class, 'funds']);
             Route::post('/users/{user}/plans', [AdminController::class, 'plans']);
+            Route::post('/users/{user}/plans/{investment}/stop', [AdminController::class, 'stopPlan']);
             Route::get('/audit', [AdminController::class, 'audit']);
         });
     });

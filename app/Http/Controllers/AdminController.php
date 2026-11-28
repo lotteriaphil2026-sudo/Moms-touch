@@ -1,7 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-use App\Models\{AdminAction, MemberCertificate, MemberSignIn, User, Wallet, WalletRequest};
-use App\Services\{WalletAdministrationService, WalletRequestService};
+use App\Models\{AdminAction, InvestmentAllocation, MemberCertificate, MemberSignIn, User, Wallet, WalletRequest};
+use App\Services\{InterestAccrualService, WalletAdministrationService, WalletRequestService, WebPushNotificationService};
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -160,6 +160,71 @@ class AdminController extends Controller
             'admin_label' => $label,
         ]);
     }
+    public function stopPlan(Request $request, User $user, InvestmentAllocation $investment): JsonResponse
+    {
+        abort_unless($request->user()->is_admin, 403, 'Administrator access is required.');
+        abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot have member plans.');
+        abort_unless((int) $investment->user_id === (int) $user->id, 404, 'Plan not found for this member.');
+        abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
+
+        $input = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
+        app(InterestAccrualService::class)->accrue($user);
+
+        [$allocation, $changed] = DB::transaction(function () use ($request, $user, $investment, $input) {
+            $allocation = InvestmentAllocation::whereKey($investment->id)->lockForUpdate()->firstOrFail();
+            if ($allocation->status !== 'active') {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'allocation' => 'This plan is already stopped or completed.',
+                ]);
+            }
+
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->firstOrFail();
+            $wallet->invested_cents = max(0, $wallet->invested_cents - $allocation->amount_cents);
+            $wallet->save();
+
+            $allocation->forceFill([
+                'status' => 'stopped',
+                'stopped_at' => now(),
+                'stopped_by' => $request->user()->id,
+            ])->save();
+
+            AdminAction::create([
+                'reference' => (string) Str::uuid(),
+                'actor_id' => $request->user()->id,
+                'user_id' => $user->id,
+                'request_id' => (string) Str::uuid(),
+                'request_fingerprint' => hash('sha256', 'plan-stopped|'.$allocation->id),
+                'action' => 'plan_stopped',
+                'amount_cents' => $allocation->amount_cents,
+                'note' => trim($input['reason']),
+                'metadata' => [
+                    'allocation_id' => $allocation->id,
+                    'allocation_reference' => $allocation->reference,
+                    'plan' => $allocation->plan,
+                    'plan_name' => $allocation->plan_name,
+                ],
+            ]);
+
+            return [$allocation, true];
+        }, 3);
+
+        app(WebPushNotificationService::class)->notify(
+            $user->id,
+            'Your '.$allocation->plan_name.' plan was stopped by an administrator. Previous interest history and earnings remain unchanged.',
+            '/#/investments',
+            'Investment plan stopped'
+        );
+
+        return response()->json([
+            'message' => 'Plan stopped. The member’s earnings and credit history were preserved.',
+            'allocation_id' => $allocation->id,
+            'status' => $allocation->status,
+        ]);
+    }
+
     public function sendCertificate(Request $request, User $user): JsonResponse
     {
         abort_unless(! $user->is_admin, 422, 'Administrator accounts cannot receive member certificates.');

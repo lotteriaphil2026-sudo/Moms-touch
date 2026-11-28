@@ -100,6 +100,7 @@
  .admin-certificate-list article>div{display:flex;flex-direction:column;gap:3px;min-width:0}
  .admin-certificate-list article strong{color:#3a281f;font-size:13px}
  .admin-certificate-list article small{color:#777;font-size:11px;overflow-wrap:anywhere}
+ .admin-stop-plan-button{width:100%;margin-top:12px}
  .admin-member-operations{display:flex;flex-direction:column;gap:12px;min-width:0}
  .admin-member-actions{display:flex;justify-content:flex-end;align-items:center;gap:6px;flex-wrap:wrap}
  .admin-member-actions .btn{min-height:40px;padding:9px 10px;font-size:10px;white-space:nowrap}
