@@ -1,11 +1,12 @@
 <?php
 namespace Tests\Feature;
 use App\Jobs\SendWebPushNotification;
+use App\Mail\WithdrawalApproved;
 use App\Models\{InvestmentAllocation, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\{Hash, Queue, Storage};
+use Illuminate\Support\Facades\{Hash, Mail, Queue, Storage};
 use Illuminate\Support\Str;
 use Tests\TestCase;
 class AdminWorkflowTest extends TestCase
@@ -122,8 +123,12 @@ class AdminWorkflowTest extends TestCase
   $this->postJson('/portal/transactions',['type'=>'invest','amount'=>'5000','plan'=>'select','request_id'=>(string)Str::uuid()])->assertUnprocessable();$this->assertDatabaseCount('wallet_requests',1);$this->assertDatabaseCount('investment_allocations',0);
  }
  public function test_withdrawal_approval_releases_hold_without_another_debit(): void {
+  Mail::fake();
   $u=$this->member(false,'10000');$admin=$this->member(true);$r=$this->walletRequest($u,'withdraw','1000.50');$this->actingAs($admin);$this->review($r)->assertOk();$this->review($r)->assertOk();
   $w=Wallet::where('user_id',$u->id)->first();$this->assertSame(899950,$w->balance_cents);$this->assertSame(0,$w->held_cents);$this->assertDatabaseCount('wallet_transactions',2);$this->assertDatabaseCount('admin_actions',1);
+  Mail::assertSent(WithdrawalApproved::class, fn (WithdrawalApproved $mail) => $mail->hasTo($u->email)
+   && $mail->request->amount_cents===100050
+   && $mail->request->status==='approved');
  }
  public function test_rejection_refunds_a_hold_once_and_never_credits_a_rejected_deposit(): void {
   $u=$this->member(false,'10000');$admin=$this->member(true);$w=$this->walletRequest($u,'withdraw','1000');$d=$this->walletRequest($u,'deposit','5000');$this->actingAs($admin);

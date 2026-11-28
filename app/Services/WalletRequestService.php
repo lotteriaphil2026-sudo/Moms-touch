@@ -4,6 +4,7 @@ use App\Models\{AdminAction, User, Wallet, WalletRequest, WalletTransaction};
 use App\Models\WithdrawalAccount;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -169,6 +170,15 @@ class WalletRequestService
                 ? 'Your '.$type.' request was approved. Sign in to view the account update.'
                 : 'Your '.$type.' request was declined. Sign in to view the account update.';
             app(WebPushNotificationService::class)->notify($request->user_id, $message);
+
+            if ($request->type === 'withdraw' && $request->status === 'approved') {
+                try {
+                    $member = User::findOrFail($request->user_id);
+                    Mail::to($member->email)->send(new \App\Mail\WithdrawalApproved($request->fresh(), $member));
+                } catch (Throwable $mailError) {
+                    report($mailError);
+                }
+            }
         }
 
         return $request;
