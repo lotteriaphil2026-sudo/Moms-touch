@@ -76,8 +76,9 @@
 .admin-classify-name{cursor:pointer;text-decoration:none}
  .admin-member-overview{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(290px,.85fr);gap:16px;align-items:stretch}
  .admin-member-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:22px;min-width:0}
+ .admin-member-summary-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0}
  .admin-member-summary-primary{min-width:0}
- .admin-member-summary-primary h1{font-size:20px;line-height:1.35;letter-spacing:-.03em;color:#3a281f;margin:0 0 16px;overflow-wrap:anywhere}
+ .admin-member-summary-heading h1{min-width:0;margin:0;font-size:20px;line-height:1.35;letter-spacing:-.03em;color:#3a281f;overflow-wrap:anywhere}
  .admin-member-profile{grid-template-columns:76px minmax(0,1fr);align-content:start;gap:10px 12px}
  .admin-member-profile dt{font-size:11px;white-space:nowrap}
  .admin-member-profile dd{font-size:12px;font-weight:550;color:#3a281f}
@@ -234,11 +235,15 @@
 .admin-content .admin-member-label:empty{display:none}
 .admin-content .admin-member-label>span{display:inline-flex;align-items:center;justify-content:center;max-width:100%;padding:8px 18px;border:1px solid #eadbb8;border-radius:11px;background:#fff9e9;box-shadow:0 2px 6px rgba(48,43,36,.05),0 8px 18px rgba(48,43,36,.08);color:#785d30;font-size:12px;font-weight:600;line-height:1.4;overflow-wrap:anywhere;white-space:pre-wrap}
 .admin-referral-panel .detail-row strong{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
-.admin-referral-panel .admin-referral-changed{display:inline-flex;padding:4px 8px;border:1px solid #d7e9dc;border-radius:999px;background:#edf6ef;color:#28734b;font-size:9px;line-height:1.2;white-space:nowrap}
-.admin-member-status-labels{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
-.admin-referral-panel .admin-home-screen-added{display:inline-flex;padding:4px 8px;border:1px solid #eadbb8;border-radius:999px;background:#fff9e9;color:#785d30;font-size:9px;line-height:1.2;white-space:nowrap}
+.admin-member-status-labels{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 auto;flex-wrap:wrap}
+.admin-member-status-labels .admin-referral-changed{display:inline-flex;padding:4px 8px;border:1px solid #d7e9dc;border-radius:999px;background:#edf6ef;color:#28734b;font-size:9px;line-height:1.2;white-space:nowrap}
+.admin-member-status-labels .admin-home-screen-added{display:inline-flex;padding:4px 8px;border:1px solid #eadbb8;border-radius:999px;background:#fff9e9;color:#785d30;font-size:9px;line-height:1.2;white-space:nowrap}
 @media(max-width:700px){
   .admin-content .admin-member-label{flex:1 1 100%;justify-content:flex-start}
+}
+@media(max-width:600px){
+  .admin-member-summary-heading{align-items:flex-start;flex-direction:column}
+  .admin-member-status-labels{justify-content:flex-start}
 }
 @media(prefers-reduced-motion:reduce){
   .admin-content .admin-stat,.admin-content .admin-quick-links>a,.admin-content .filter-chip,.admin-content .btn,.admin-content .btn-link,.admin-content .admin-member-section-button,.admin-mobile-nav a{transition:none}

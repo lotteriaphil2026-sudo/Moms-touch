@@ -193,7 +193,7 @@ class AdminWorkflowTest extends TestCase
 
   $this->actingAs($admin)
    ->postJson('/portal/admin/users/'.$u->id.'/plans/'.$old->id.'/upgrade',[
-    'amount'=>'7000',
+    'amount'=>'₱7,000.00',
     'plan'=>'select',
     'reason'=>'Member requested a higher principal',
    ])

@@ -233,7 +233,7 @@ class AdminController extends Controller
         abort_unless(config('portal.financial_operations_enabled'), 403, 'Wallet operations are temporarily paused.');
 
         $input = $request->validate([
-            'amount' => ['required', 'string', 'max:17', 'regex:/\A\d{1,14}(?:\.\d{1,2})?\z/'],
+            'amount' => ['required', 'string', 'max:24', 'regex:/\A(?:\x{20B1} *)?(?:\d{1,14}|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?\z/u'],
             'plan' => ['required', 'string', 'in:select,prime,signature'],
             'reason' => ['required', 'string', 'min:3', 'max:500'],
         ]);
@@ -241,7 +241,7 @@ class AdminController extends Controller
         $details = config('portal.plans.'.$input['plan']);
         abort_unless(is_array($details), 422, 'Choose a valid plan.');
 
-        $newCents = PortalMoney::cents($input['amount']);
+        $newCents = PortalMoney::cents(str_replace(['₱', ',', ' '], '', $input['amount']));
         if ($newCents < $details['minimum_cents']) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'amount' => 'Enter at least the selected plan’s minimum amount.',
