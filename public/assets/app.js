@@ -180,7 +180,7 @@ function withdrawalAccountsPanel(){
 function memberCertificatesDialog(){
  const certificates=state.certificates||[];
  const rows=certificates.map(c=>`<article class="member-certificate-item"><div><strong>${esc(c.certificate_number)}</strong><small>${esc(c.plan_name)} · ${esc(c.holder_name)} · ${esc(c.indicated_date||'')}</small></div><div class="member-certificate-actions"><a class="btn btn-outline" href="${esc(c.view_url)}" target="_blank" rel="noopener noreferrer">View</a><a class="btn btn-outline" href="${esc(c.download_url)}">Download</a></div></article>`).join('');
- openModal(`<h2 id="dialog-title">My Certificate</h2>${certificates.length?`<div class="member-certificate-list">${rows}</div>`:'<p class="muted">No certificates have been issued to your account yet.</p>'}`);
+ openModal(`<h2 id="dialog-title">My Certificate</h2>${certificates.length?`<div class="member-certificate-list">${rows}</div>`:'<p class="muted">Certificates uploaded by the administrator will appear here.</p>'}`);
 }
 function accountMarkup(){
  if(!state.user)return heading('YOUR VERY OWN SPACE','Hello, future member.','A warm welcome, and a simple place to call yours.')+`<div class="empty-state">${I('user')}<h3>Make yourself at home.</h3><p>Sign in to explore your wallet, try investment allocations, and see your account activity.</p><a class="btn btn-primary" href="#/login">Sign in ${I('arrow')}</a></div>`;

@@ -5,9 +5,7 @@ use App\Services\{InterestAccrualService, PortalMoney, WalletAdministrationServi
 use Illuminate\Http\{JsonResponse, Request};
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -430,23 +428,6 @@ class AdminController extends Controller
             'sent_at' => now(),
         ]);
 
-        $certificateUrl = URL::temporarySignedRoute(
-            'certificates.view',
-            now()->addDays(30),
-            ['certificate' => $certificate->id],
-        );
-
-        try {
-            Mail::to($user->email)->send(new \App\Mail\CertificateIssued($certificate, $user, $certificateUrl));
-        } catch (\Throwable $mailError) {
-            report($mailError);
-            $certificate->delete();
-            Storage::disk('local')->delete($storedPath);
-            throw new \Illuminate\Http\Exceptions\HttpResponseException(
-                response()->json(['message' => 'The certificate could not be delivered to '.$user->email.'.'], 502)
-            );
-        }
-
         AdminAction::create([
             'reference' => (string) Str::uuid(),
             'actor_id' => $request->user()->id,
@@ -455,7 +436,7 @@ class AdminController extends Controller
             'request_fingerprint' => hash('sha256', 'certificate-issued|'.$certificate->id),
             'action' => 'certificate_issued',
             'amount_cents' => 0,
-            'note' => 'Sent certificate '.$certificate->certificate_number.'.',
+            'note' => 'Uploaded certificate '.$certificate->certificate_number.'.',
             'metadata' => [
                 'certificate_id' => $certificate->id,
                 'certificate_number' => $certificate->certificate_number,
@@ -464,7 +445,7 @@ class AdminController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Certificate sent to '.$user->email.'.',
+            'message' => 'Certificate uploaded to the member profile.',
             'certificate' => [
                 'id' => $certificate->id,
                 'reference' => $certificate->reference,

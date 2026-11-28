@@ -2,7 +2,6 @@
 namespace Tests\Feature;
 use App\Jobs\SendWebPushNotification;
 use App\Mail\WithdrawalApproved;
-use App\Mail\CertificateIssued;
 use App\Models\{InvestmentAllocation, MemberCertificate, PushSubscription, User, Wallet, WalletRequest, WithdrawalAccount};
 use App\Services\{WalletService, WalletRequestService};
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -52,7 +51,7 @@ class AdminWorkflowTest extends TestCase
   $this->assertDatabaseCount('admin_actions',2);
   $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('user.referral_preview_type','standard');
  }
- public function test_admin_can_upload_and_email_a_member_certificate(): void {
+ public function test_admin_can_upload_a_certificate_to_a_members_profile_without_email(): void {
   Mail::fake();
   $member=$this->member();$otherMember=$this->member();$admin=$this->member(true);$this->actingAs($admin);
   $certificate=UploadedFile::fake()->create('investment-certificate.pdf',100,'application/pdf');
@@ -63,11 +62,14 @@ class AdminWorkflowTest extends TestCase
    'plan_name'=>"Mom's Select",
    'indicated_date'=>'2026-11-28',
    'sender_name'=>'Francis',
-  ],['Accept'=>'application/json'])->assertOk()->assertJsonPath('certificate.certificate_number','MT-0038419');
+  ],['Accept'=>'application/json'])->assertOk()
+   ->assertJsonPath('message','Certificate uploaded to the member profile.')
+   ->assertJsonPath('certificate.certificate_number','MT-0038419');
   $record=MemberCertificate::firstOrFail();
   $this->assertSame($member->id,$record->user_id);
   $this->assertDatabaseHas('admin_actions',['actor_id'=>$admin->id,'user_id'=>$member->id,'action'=>'certificate_issued']);
-  Mail::assertSent(CertificateIssued::class,fn(CertificateIssued $mail)=>$mail->hasTo($member->email)&&$mail->certificate->certificate_number==='MT-0038419');
+  Mail::assertNothingOutgoing();
+  Storage::disk('local')->assertExists($record->attachment_path);
   $this->getJson('/portal/admin/users/'.$member->id)->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
   $this->actingAs($member->fresh())->getJson('/portal/state')->assertOk()->assertJsonPath('certificates.0.certificate_number','MT-0038419');
   $this->actingAs($otherMember)->getJson('/portal/state')->assertOk()->assertJsonCount(0,'certificates');
